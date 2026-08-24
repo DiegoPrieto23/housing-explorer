@@ -1,0 +1,49 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
+
+# --- Node ---
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Environment ---
+.env
+.env.*
+!.env.example
+
+# --- Data: nothing is versioned except the README and the demo CSV ---
+data/*
+!data/README.md
+!data/sample_listings.csv
+
+# SQLite artefacts, wherever they land
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+# El notebook SÍ se versiona con sus salidas: es material de portfolio y
+# tiene que verse en GitHub sin ejecutarlo. Lo mismo el modelo exportado,
+# que el backend necesita para arrancar la estimación de precios.
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

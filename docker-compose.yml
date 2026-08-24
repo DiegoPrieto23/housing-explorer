@@ -1,0 +1,112 @@
+# Levanta el sistema entero con un solo comando:
+#
+#     docker compose up --build
+#
+# Web ........ http://localhost:5173
+# API ........ http://localhost:8000/api
+# Docs ....... http://localhost:8000/docs
+#
+# Este fichero está pensado para **ejecutar** la aplicación, no para desarrollar
+# dentro de ella. Para trabajar con recarga en caliente está ./start.ps1, que
+# corre en el host. La diferencia no es de gusto: montar el código fuente de
+# Windows dentro de un contenedor Linux obliga a los vigilantes de ficheros a
+# sondear, y eso costaba aquí un 190 % de CPU sin una sola petición en curso.
+#
+# Sin Docker, el equivalente es ./start.sh (o .\start.ps1 en Windows).
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: housing-explorer-backend
+    # Reparte señales y recoge zombis: sin esto Ctrl+C tarda diez segundos en
+    # bajar uvicorn porque la señal no llega al PID 1 real.
+    init: true
+    environment:
+      # La base vive en el volumen de Docker; los datasets se leen del host.
+      DATABASE_PATH: /data/housing.db
+      DATA_DIR: /seed
+      SEED_DATABASE: /seed/housing.db
+      # El frontend habla con la API a través del proxy de Vite, así que el
+      # navegador ve un solo origen y CORS no llega a intervenir. Va declarado
+      # de todas formas por si se abre la API directamente desde otra página.
+      CORS_ORIGINS: '["http://localhost:5173"]'
+      IDEALISTA_API_KEY: ${IDEALISTA_API_KEY:-}
+      IDEALISTA_API_SECRET: ${IDEALISTA_API_SECRET:-}
+    volumes:
+      # Un volumen de Docker, no un montaje del host, y esta es la decisión que
+      # separa «usable» de «inservible». Medido con la base de 137 MB dentro de
+      # este mismo contenedor:
+      #
+      #                        montaje de Windows   volumen de Docker
+      #   SELECT COUNT(*)             17.377 ms              80 ms
+      #   contar por zona              9.532 ms             164 ms
+      #
+      # 217x y 58x. SQLite hace lectura aleatoria, y el puente de Docker Desktop
+      # hacia NTFS la penaliza hasta dejarla inservible. En el volumen la base
+      # está sobre el ext4 de la máquina virtual y va como en el host.
+      - housing-data:/data
+      # Los datasets sí se leen del host, en solo lectura: se recorren una vez y
+      # de forma secuencial al sembrar, que es lo que el puente sí hace
+      # razonablemente bien.
+      - ./data:/seed:ro
+      # El código del host, para que `docker compose exec` ejecute los scripts
+      # que tengas ahora mismo y no los que hubiera al construir la imagen.
+      - ./backend/app:/app/app
+      - ./backend/scripts:/app/scripts
+    ports:
+      - "8000:8000"
+    # Sin --reload, y no por gusto: ver la nota de arriba sobre los vigilantes
+    # de ficheros. Si editas un .py:  docker compose restart backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      # 15 s y no 3. Medido dentro del contenedor: arrancar el intérprete y
+      # hacer la petición tarda entre 4,2 y 4,6 s, así que con 3 s la sonda
+      # agotaba el tiempo antes de terminar y marcaba el servicio como enfermo
+      # aunque respondiera perfectamente. El coste es el arranque de CPython, no
+      # la biblioteca: con http.client en vez de urllib.request tarda lo mismo.
+      timeout: 15s
+      retries: 5
+      # La primera vez hay que copiar o sembrar la base, y eso son minutos.
+      start_period: 600s
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: housing-explorer-frontend
+    init: true
+    environment:
+      # Lo lee vite.config.ts: a dónde reenviar /api. Dentro de la red de compose
+      # el backend se llama por su nombre de servicio, no localhost.
+      VITE_API_TARGET: http://backend:8000
+    # Sin montar el código, por lo mismo que en el backend: el vigilante de Vite
+    # sobre un volumen de Windows sondeaba y se comía una CPU entera. Sirve lo
+    # que hay en la imagen, así que para ver un cambio del frontend hay que
+    # reconstruir:  docker compose up --build
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend:
+        # Arrancar la web antes que la API solo sirve para enseñar un error.
+        condition: service_healthy
+    healthcheck:
+      # wget de busybox, que va en la imagen de Alpine y arranca en milisegundos:
+      # aquí no hace falta el margen que necesita el intérprete de Python.
+      #
+      # 127.0.0.1 y no localhost: dentro del contenedor, /etc/hosts resuelve
+      # localhost a ::1 antes que a 127.0.0.1, y Vite solo escucha en IPv4
+      # (0.0.0.0:5173). Con «localhost» la sonda daba «connection refused» y
+      # marcaba el servicio como enfermo mientras la web respondía perfectamente
+      # desde fuera.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5173/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  # Sobrevive a `docker compose down`. Para empezar de cero con la base:
+  #     docker compose down -v
+  housing-data:

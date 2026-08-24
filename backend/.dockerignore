@@ -1,0 +1,13 @@
+# El contexto de build es ./backend; el .dockerignore de la raíz no aplica.
+# .venv son cientos de megas de binarios del host que no pintan nada en la
+# imagen y que ralentizan cada build al subirse como contexto.
+.venv
+__pycache__
+**/__pycache__
+.pytest_cache
+.ruff_cache
+.env
+.env.*
+*.db
+*.db-wal
+*.db-shm

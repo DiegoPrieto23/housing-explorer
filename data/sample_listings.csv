@@ -1,0 +1,9 @@
+id,title,url,operation,property_type,price,size_m2,rooms,latitude,longitude,address,zone
+1,Piso reformado junto a Malasana,https://example.invalid/1,venta,piso,395000,78,2,40.4260,-3.7038,Calle de la Palma 12,Malasana
+2,Atico con terraza en Chamberi,https://example.invalid/2,venta,atico,620000,110,3,40.4370,-3.7040,Calle de Ponzano 45,Chamberi
+3,Estudio luminoso en Lavapies,https://example.invalid/3,alquiler,estudio,950,38,1,40.4090,-3.7010,Calle del Ave Maria 8,Lavapies
+4,Casa con jardin en Pozuelo,https://example.invalid/4,venta,casa,890000,240,5,40.4350,-3.8130,Avenida de Europa 3,Pozuelo
+5,Piso amueblado en Chueca,https://example.invalid/5,alquiler,piso,1450,65,2,40.4225,-3.6975,Calle de Hortaleza 60,Chueca
+6,Duplex en Retiro,https://example.invalid/6,venta,duplex,540000,120,3,40.4130,-3.6790,Calle de Narvaez 30,Retiro
+7,Habitacion en piso compartido,https://example.invalid/7,alquiler,habitacion,520,14,1,40.4405,-3.6950,Calle de Cartagena 22,Salamanca
+8,Local comercial en Tetuan,https://example.invalid/8,alquiler,local,2100,180,,40.4600,-3.6990,Calle de Bravo Murillo 200,Tetuan

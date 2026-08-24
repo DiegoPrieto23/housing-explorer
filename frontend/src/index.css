@@ -1,0 +1,1296 @@
+/* Design tokens. Light by default, redefined for dark, so nothing depends on
+   a media query having matched. */
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #f6f7f9;
+  --fg: #16181d;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #1a56db;
+  --accent-fg: #ffffff;
+  --accent-soft: #e8effc;
+  --error: #b42318;
+  --ok: #12855b;
+  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 10%);
+  --radius: 10px;
+
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --surface: #1b1e24;
+    --surface-alt: #22262e;
+    --fg: #e8eaed;
+    --muted: #9aa1ac;
+    --border: #2a2e35;
+    --accent: #6f9bff;
+    --accent-fg: #10131a;
+    --accent-soft: #23304d;
+    --shadow: none;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* -- layout -------------------------------------------------------------- */
+
+.layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  height: 100%;
+}
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 1.1rem 1.1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.toolbar__draw {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.button--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.button--on:hover:not(:disabled) {
+  color: var(--accent-fg);
+}
+
+.drawn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  font-size: 0.8rem;
+}
+
+.field > .muted {
+  margin: 0.2rem 0 0;
+}
+
+.toolbar__selected {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 45%) minmax(0, 55%);
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* -- controls ------------------------------------------------------------ */
+
+.button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.button--ghost {
+  background: transparent;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.segmented button {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+  flex: 1 1 auto;
+}
+
+.segmented button.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.segmented--views {
+  flex: 0 0 auto;
+}
+
+.segmented--views button {
+  min-width: 5.5rem;
+}
+
+/* -- filter panel -------------------------------------------------------- */
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.filters__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.filters__header h1 {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.filters__header p {
+  margin: 0.15rem 0 0;
+}
+
+.field {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field legend {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0;
+  margin-bottom: 0.35rem;
+}
+
+.field legend .muted {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.72rem;
+}
+
+.field select,
+.field input[type="number"] {
+  font: inherit;
+  font-size: 0.88rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.range label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.checkbox input {
+  margin-top: 0.25rem;
+}
+
+/* -- statistics ---------------------------------------------------------- */
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.1rem;
+  transition: opacity 120ms ease-out;
+}
+
+.stats.is-loading {
+  opacity: 0.55;
+}
+
+.stats h2 {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.stats h3 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.metrics dt {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.metrics dd {
+  margin: 0.1rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.metrics__small {
+  font-size: 0.9rem !important;
+}
+
+.histogram {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 76px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.histogram li {
+  flex: 1 1 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.histogram__bar {
+  display: block;
+  width: 100%;
+  min-height: 1px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+}
+
+.histogram__axis {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.2rem 0 0;
+  font-size: 0.7rem;
+}
+
+.zones {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.zones th,
+.zones td {
+  text-align: right;
+  padding: 0.3rem 0.2rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.zones thead th {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.zones tbody th {
+  text-align: left;
+  font-weight: 500;
+}
+
+.zones tbody tr {
+  cursor: pointer;
+}
+
+.zones tbody tr:hover {
+  background: var(--surface-alt);
+}
+
+.zones tbody tr.is-active {
+  background: var(--accent-soft);
+}
+
+/* -- list view ----------------------------------------------------------- */
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+  transition: opacity 120ms ease-out;
+}
+
+.list.is-loading {
+  opacity: 0.6;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card--active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.card__media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--surface-alt);
+}
+
+.card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card__badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgb(0 0 0 / 62%);
+  color: #fff;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
+.card__body {
+  padding: 0.7rem 0.8rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.card__price {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.card__unit {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.card__title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 0.3rem 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.card__type {
+  text-transform: capitalize;
+}
+
+.card__zone {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+}
+
+.card__actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.6rem;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.25rem 0 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 520px) {
+  .pager__pages {
+    display: none;
+  }
+}
+
+.notice {
+  margin: 1.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.notice--error {
+  color: var(--error);
+}
+
+/* -- bargains ------------------------------------------------------------- */
+
+/*
+   El chollo se marca con un color propio y una estrella, no reutilizando el
+   acento: el acento ya significa "seleccionado", y dos cosas distintas con la
+   misma señal no se distinguen.
+*/
+:root {
+  --deal: #e11d48;
+  --deal-soft: #fee7ec;
+  --deal-fg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --deal: #fb7185;
+    --deal-soft: #3d1520;
+    --deal-fg: #1a0a0f;
+  }
+}
+
+.card--bargain {
+  border-color: var(--deal);
+  box-shadow: 0 0 0 1px var(--deal);
+}
+
+.card__deal {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  max-width: calc(100% - 1rem);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--deal);
+  color: var(--deal-fg);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card__estimate {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La estrella del pin ya va dentro del SVG; esto solo lo hace notar al pasar. */
+.pin--bargain svg {
+  filter: drop-shadow(0 1px 2px rgb(225 29 72 / 45%));
+}
+
+.checkbox--deal.is-on {
+  background: var(--deal-soft);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.5rem;
+  border-top-color: var(--deal);
+}
+
+/* El bloque de estimación del panel de detalle. */
+.estimate {
+  margin: 0.6rem 0 0.2rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+  border-left: 3px solid var(--border);
+}
+
+.estimate--bargain {
+  background: var(--deal-soft);
+  border-left-color: var(--deal);
+}
+
+.estimate__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.estimate--bargain .estimate__head {
+  color: var(--deal);
+}
+
+.estimate__head strong {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.estimate__body {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+}
+
+.estimate__warning {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* -- advanced filters ----------------------------------------------------- */
+
+.field__toggle {
+  font: inherit;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.field__toggle:hover {
+  color: var(--fg);
+}
+
+.field__badge {
+  min-width: 1.1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 0.66rem;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.more {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.more__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.more__row > .muted {
+  font-size: 0.72rem;
+}
+
+.more__note {
+  margin: 0;
+  font-size: 0.7rem;
+}
+
+.checkbox--inline {
+  border-top: none;
+  padding-top: 0;
+  font-size: 0.8rem;
+}
+
+/* Los extras, como fichas que se marcan. Un desplegable múltiple esconde lo que
+   está elegido; aquí se ve de un vistazo qué está pedido y qué no. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+}
+
+.chip--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* -- distance curve ------------------------------------------------------- */
+
+.curve {
+  width: 100%;
+  height: 90px;
+  display: block;
+  margin-top: 0.2rem;
+  overflow: visible;
+}
+
+.curve__area {
+  fill: var(--accent);
+  opacity: 0.14;
+}
+
+.curve__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.curve__dot {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.curve__axis {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.15rem 0 0;
+  font-size: 0.58rem;
+}
+
+.curve__foot,
+.curve__warning {
+  margin: 0.3rem 0 0;
+  font-size: 0.68rem;
+}
+
+/* -- amenity impact ------------------------------------------------------- */
+
+.impact {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.impact li {
+  display: grid;
+  grid-template-columns: 4.6rem 1fr 2.4rem;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+}
+
+.impact__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* El carril lleva el cero en el centro, para que subir y bajar se lean como
+   direcciones opuestas y no como dos longitudes cualesquiera. */
+.impact__track {
+  position: relative;
+  height: 0.7rem;
+  background: var(--surface-alt);
+  border-radius: 2px;
+}
+
+.impact__track::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+.impact__bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 2px;
+}
+
+.impact__bar--up {
+  left: 50%;
+  background: var(--ok);
+}
+
+.impact__bar--down {
+  right: 50%;
+  background: var(--error);
+}
+
+.impact__value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ok);
+}
+
+.impact__value--down {
+  color: var(--error);
+}
+
+.impact__warning {
+  margin: 0.4rem 0 0;
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+/* -- favourites ----------------------------------------------------------- */
+
+.fav {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  border: none;
+  background: rgb(0 0 0 / 45%);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 120ms ease-out, background 120ms ease-out;
+}
+
+.fav:hover {
+  background: rgb(0 0 0 / 70%);
+  transform: scale(1.1);
+}
+
+.fav--on {
+  background: var(--deal);
+}
+
+.fav--detail {
+  top: 0.5rem;
+  right: 2.6rem;  /* a la izquierda del botón de cerrar */
+}
+
+/* El contador junto a la pestaña de favoritos. */
+.tab__count {
+  display: inline-block;
+  min-width: 1.15rem;
+  margin-left: 0.35rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--deal);
+  color: var(--deal-fg);
+  font-size: 0.7rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.segmented--views button.is-active .tab__count {
+  background: var(--accent-fg);
+  color: var(--accent);
+}
+
+/* -- distribution chart --------------------------------------------------- */
+
+.segmented--small {
+  margin: 0.1rem 0 0.5rem;
+}
+
+.segmented--small button {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 90px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bars li {
+  flex: 1 1 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 0;
+}
+
+.bars__bar {
+  display: block;
+  width: 100%;
+  min-height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  transition: background 120ms ease-out;
+}
+
+.bars li:hover .bars__bar {
+  background: var(--deal);
+}
+
+.bars__label {
+  margin-top: 0.2rem;
+  font-size: 0.6rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.bars__foot {
+  margin: 0.35rem 0 0;
+  font-size: 0.68rem;
+}
+
+/* -- map layer switch ----------------------------------------------------- */
+
+.map-layers {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1000;
+  gap: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.map-layers button {
+  border-radius: 0;
+  font-size: 0.78rem;
+  padding: 0.32rem 0.7rem;
+}
+
+.map-layers button + button {
+  border-left: none;
+}
+
+/* -- heat legend ---------------------------------------------------------- */
+
+.legend--heat {
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend__title {
+  font-weight: 650;
+}
+
+.legend__ramp {
+  display: flex;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.legend__band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 1.1rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  /* Los extremos llevan número; el texto tiene que leerse sobre cualquier
+     tono de la rampa, así que va oscuro con un halo claro detrás. */
+  color: #1a1a1a;
+  text-shadow: 0 0 2px rgb(255 255 255 / 85%);
+  white-space: nowrap;
+}
+
+/* -- map view ------------------------------------------------------------ */
+
+.map-pane {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.map {
+  height: 100%;
+  width: 100%;
+}
+
+/* Above Leaflet's own panes and controls, which sit at z-index 400-1000. */
+.map-status {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: calc(100% - 2rem);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-status .notice {
+  margin: 0;
+}
+
+/* -- markers -------------------------------------------------------------- */
+
+/* divIcon wrappers are opaque white boxes by default; the SVG carries the look. */
+.pin,
+.cell {
+  background: none;
+  border: none;
+}
+
+.pin svg {
+  display: block;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 35%));
+  transition: transform 120ms ease-out;
+  transform-origin: 50% 100%;
+}
+
+.pin:hover svg {
+  transform: scale(1.12);
+}
+
+.pin--selected svg {
+  transform: scale(1.3);
+  filter: drop-shadow(0 0 0 2px var(--accent)) drop-shadow(0 2px 4px rgb(0 0 0 / 45%));
+}
+
+/* An aggregated grid cell: one dot standing in for many listings. */
+.cell__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgb(26 86 219 / 78%);
+  border: 2px solid rgb(255 255 255 / 85%);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  transition: transform 120ms ease-out;
+}
+
+.cell:hover .cell__inner {
+  transform: scale(1.08);
+}
+
+.cell__count {
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1;
+}
+
+/* While drawing, the cursor must say so: dragging pans, drawing does not. */
+.map--drawing,
+.map--drawing .leaflet-grab {
+  cursor: crosshair;
+}
+
+/* -- legend --------------------------------------------------------------- */
+
+.legend {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 1000;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.7rem;
+  max-width: 60%;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 0.72rem;
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.legend__item--note {
+  color: var(--muted);
+}
+
+.legend__swatch {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+.legend__swatch--hollow {
+  background: var(--surface);
+  border: 2px solid var(--muted);
+}
+
+/* -- detail panel --------------------------------------------------------- */
+
+/*
+   Pinned to the bottom-right rather than opening over the marker: a popup
+   covers the very spot you clicked and vanishes as soon as the map moves.
+*/
+.detail {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1200;
+  width: min(320px, calc(100vw - 2rem));
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 6px 24px rgb(16 24 40 / 22%);
+}
+
+.detail__close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: 1;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: none;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.detail__close:hover {
+  background: rgb(0 0 0 / 75%);
+}
+
+.detail__media {
+  position: relative;
+  aspect-ratio: 2 / 1;
+  background: var(--surface-alt);
+}
+
+.detail__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.detail__badge {
+  position: absolute;
+  left: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail__body {
+  padding: 0.8rem 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.detail__price {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail__title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0.4rem 0 0;
+}
+
+.detail__facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin: 0.7rem 0 0.2rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border);
+}
+
+.detail__facts dt {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.detail__facts dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail__zone {
+  margin: 0.5rem 0 0.6rem;
+}
+
+.detail__id {
+  margin: 0.4rem 0 0;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 900px) {
+  .detail {
+    right: 0.5rem;
+    left: 0.5rem;
+    bottom: 0.5rem;
+    width: auto;
+    max-height: 55vh;
+  }
+}

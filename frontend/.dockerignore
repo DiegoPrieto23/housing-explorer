@@ -1,0 +1,10 @@
+# El contexto de build es ./frontend, así que el .dockerignore de la raíz no
+# aplica aquí. Sin este archivo, `COPY . .` machacaría los node_modules que
+# acaba de instalar el contenedor con los del host: en Windows o macOS eso
+# mete binarios nativos (esbuild, rollup) de otra plataforma y el build muere
+# con "Cannot find module @rollup/rollup-linux-x64-gnu".
+node_modules
+dist
+.env
+.env.*
+*.log
