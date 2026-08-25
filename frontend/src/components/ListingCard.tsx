@@ -64,7 +64,11 @@ export default function ListingCard({
           <span className="card__type">{listing.property_type}</span>
         </p>
 
-        <p className="card__zone muted">{listing.address ?? listing.zone ?? "Sin zona"}</p>
+        {/* El barrio antes que la ciudad: el dataset no trae dirección, así que
+            sin esto las 75.804 tarjetas de Madrid decían todas "Madrid". */}
+        <p className="card__zone muted">
+          {listing.address ?? listing.neighbourhood ?? listing.zone ?? "Sin zona"}
+        </p>
 
         {listing.expected_price !== null && !bargain ? (
           <p className="card__estimate muted" title="Precio que estima el modelo">

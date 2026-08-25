@@ -5,10 +5,18 @@ import { LayersControl, MapContainer, TileLayer, useMap, useMapEvents } from "re
 import type { BoundingBox } from "../filters";
 import { count, shortEuros } from "../format";
 import { MARKER_STYLES, PROPERTY_TYPES } from "../markers";
-import type { MapCluster, MapData, PropertyType } from "../types/listing";
+import type {
+  MapCluster,
+  MapData,
+  NeighbourhoodCollection,
+  PoiCollection,
+  PropertyType,
+} from "../types/listing";
 import DrawControl from "./DrawControl";
 import HeatLayer, { buildScale } from "./HeatLayer";
 import MarkerLayer from "./MarkerLayer";
+import NeighbourhoodLayer from "./NeighbourhoodLayer";
+import PoiLayer from "./PoiLayer";
 
 /** Where the map is pointing. Lifted so it survives switching to the list. */
 export interface Camera {
@@ -71,9 +79,45 @@ interface MapViewProps {
   onLayerChange: (layer: MapLayer) => void;
   /** Clicking an aggregated cell narrows the search to exactly that cell. */
   onCellSelect: (cell: MapCluster) => void;
+  /** Geografía fija del dataset. Null mientras carga o si no se pudo traer. */
+  neighbourhoodGeo: NeighbourhoodCollection | null;
+  pois: PoiCollection | null;
+  overlays: Overlays;
+  onOverlayToggle: (key: keyof Overlays) => void;
+  /** Ciudad filtrada: los barrios de las demás se apagan en vez de irse. */
+  zone: string | null;
+
+  /** Barrios seleccionados, por `LOCATIONID`. */
+  selectedNeighbourhoods: string[];
+  /** Anuncios por barrio, para la etiqueta de cada polígono. */
+  neighbourhoodCounts: Map<string, number>;
+  onToggleNeighbourhood: (id: string) => void;
 }
 
 export type MapLayer = "marcadores" | "calor";
+
+/**
+ * Las capas de contexto, independientes entre sí y del conmutador
+ * marcadores/calor.
+ *
+ * Van separadas del `MapLayer` a propósito: aquello es una elección entre dos
+ * formas de pintar **los mismos anuncios**, y esto son dos cosas distintas que
+ * se dibujan encima. Meterlas en el mismo control obligaría a elegir entre ver
+ * los barrios y ver los anuncios, que es justo lo contrario de para qué sirven.
+ */
+export interface Overlays {
+  neighbourhoods: boolean;
+  pois: boolean;
+}
+
+/**
+ * Barrios sí, puntos de interés no, al abrir.
+ *
+ * Los contornos de barrio dan escala y salen gratis a cualquier zoom. Las 801
+ * bocas de metro a vista de país son una mancha roja sobre tres ciudades, así
+ * que esa se pide.
+ */
+export const DEFAULT_OVERLAYS: Overlays = { neighbourhoods: true, pois: false };
 
 function toBoundingBox(bounds: L.LatLngBounds): BoundingBox {
   return {
@@ -178,6 +222,26 @@ function HeatLegend({ cells }: { cells: MapCluster[] }) {
   );
 }
 
+/** Qué significa cada forma de la capa de puntos de interés. */
+function PoiLegend() {
+  return (
+    <div className="legend legend--poi">
+      <span className="legend__item">
+        <span className="legend__swatch legend__swatch--centre" />
+        Centro
+      </span>
+      <span className="legend__item">
+        <span className="legend__swatch legend__swatch--metro" />
+        Metro
+      </span>
+      <span className="legend__item">
+        <span className="legend__swatch legend__swatch--street" />
+        Calle principal
+      </span>
+    </div>
+  );
+}
+
 function Legend({ types }: { types: PropertyType[] }) {
   if (types.length === 0) return null;
 
@@ -212,6 +276,14 @@ export default function MapView({
   layer,
   onLayerChange,
   onCellSelect,
+  neighbourhoodGeo,
+  pois,
+  overlays,
+  onOverlayToggle,
+  zone,
+  selectedNeighbourhoods,
+  neighbourhoodCounts,
+  onToggleNeighbourhood,
 }: MapViewProps) {
   const zoomToRef = useRef<(lat: number, lon: number) => void>(() => {});
 
@@ -263,6 +335,21 @@ export default function MapView({
         <Flyer bounds={flyTo} />
         <Zoomer register={(fn) => (zoomToRef.current = fn)} />
         <DrawControl active={drawing} onDrawn={onDrawn} polygon={polygon} />
+        {/*
+          Debajo de los marcadores en el código y, por tanto, en el orden de
+          pintado: son contexto. Un contorno de barrio no debe taparle el clic
+          a un anuncio.
+        */}
+        {overlays.neighbourhoods ? (
+          <NeighbourhoodLayer
+            data={neighbourhoodGeo}
+            city={zone}
+            selected={selectedNeighbourhoods}
+            counts={neighbourhoodCounts}
+            onToggle={onToggleNeighbourhood}
+          />
+        ) : null}
+        {overlays.pois ? <PoiLayer data={pois} /> : null}
         {heat ? (
           <HeatLayer cells={clusters} onSelect={onCellSelect} />
         ) : (
@@ -291,7 +378,37 @@ export default function MapView({
         ))}
       </div>
 
+      {/*
+        Botones que conmutan, no pestañas: los dos pueden estar encendidos a la
+        vez, y `aria-pressed` es lo que dice eso. Un `role="tab"` prometería que
+        elegir uno apaga el otro.
+      */}
+      <div className="map-overlays" role="group" aria-label="Capas de contexto">
+        <button
+          type="button"
+          aria-pressed={overlays.neighbourhoods}
+          className={overlays.neighbourhoods ? "is-active" : ""}
+          onClick={() => onOverlayToggle("neighbourhoods")}
+          title="Contornos de los 277 barrios que delimita el dataset"
+        >
+          <span className="map-overlays__swatch map-overlays__swatch--zone" />
+          Barrios
+        </button>
+        <button
+          type="button"
+          aria-pressed={overlays.pois}
+          className={overlays.pois ? "is-active" : ""}
+          onClick={() => onOverlayToggle("pois")}
+          title="Centro de la ciudad, bocas de metro y calle principal"
+        >
+          <span className="map-overlays__swatch map-overlays__swatch--poi" />
+          Puntos de interés
+        </button>
+      </div>
+
       {heat ? <HeatLegend cells={clusters} /> : <Legend types={visibleTypes} />}
+
+      {overlays.pois ? <PoiLegend /> : null}
 
       <div className="map-status">
         {error ? (

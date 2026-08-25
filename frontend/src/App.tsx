@@ -1,23 +1,32 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   fetchFacets,
   fetchListings,
   fetchListingsByIds,
   fetchMapData,
+  fetchNeighbourhoods,
+  fetchPointsOfInterest,
   fetchStats,
 } from "./api/client";
 import type { Order } from "./api/client";
 import DetailCard from "./components/DetailCard";
 import FilterPanel from "./components/FilterPanel";
 import ListView from "./components/ListView";
-import MapView, { INITIAL_CAMERA, type Camera, type MapLayer } from "./components/MapView";
+import LoadingScreen, { type LoadingStep } from "./components/LoadingScreen";
+import MapView, {
+  DEFAULT_OVERLAYS,
+  INITIAL_CAMERA,
+  type Camera,
+  type MapLayer,
+  type Overlays,
+} from "./components/MapView";
 import StatsPanel from "./components/StatsPanel";
 import { EMPTY_FILTERS, filtersKey, type BoundingBox, type Filters } from "./filters";
 import { TYPING_DELAY, useDebounced, VIEWPORT_DELAY } from "./hooks/useDebounced";
 import { useFavourites } from "./hooks/useFavourites";
 import { useResource } from "./hooks/useResource";
-import type { Listing, MapCluster, ZoneFacet } from "./types/listing";
+import type { Listing, MapCluster, NeighbourhoodFacet, ZoneFacet } from "./types/listing";
 import { globalId } from "./types/listing";
 
 type View = "map" | "list" | "favourites";
@@ -56,6 +65,17 @@ function encodeRectangle(box: BoundingBox): string {
   return corners.map(([lat, lon]) => `${lat.toFixed(6)},${lon.toFixed(6)}`).join(";");
 }
 
+/** The smallest box containing every neighbourhood passed in. */
+function unionBounds(entries: NeighbourhoodFacet[]): BoundingBox | null {
+  if (entries.length === 0) return null;
+  return {
+    lat_min: Math.min(...entries.map((entry) => entry.lat_min)),
+    lat_max: Math.max(...entries.map((entry) => entry.lat_max)),
+    lon_min: Math.min(...entries.map((entry) => entry.lon_min)),
+    lon_max: Math.max(...entries.map((entry) => entry.lon_max)),
+  };
+}
+
 /** A zone's bounds, or null when the zone has no coordinates on record. */
 function zoneBounds(zone: ZoneFacet | undefined): BoundingBox | null {
   if (!zone || zone.lat_min === null || zone.lon_min === null) return null;
@@ -79,6 +99,7 @@ export default function App() {
   const [flyTo, setFlyTo] = useState<BoundingBox | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [layer, setLayer] = useState<MapLayer>("marcadores");
+  const [overlays, setOverlays] = useState<Overlays>(DEFAULT_OVERLAYS);
 
   const favourites = useFavourites();
 
@@ -189,6 +210,78 @@ export default function App() {
     useCallback((signal: AbortSignal) => fetchFacets(signal), []),
   );
 
+  /*
+   * La geografía del dataset: los barrios y los puntos de interés.
+   *
+   * Clave constante, así que se pide una vez y se queda. No depende de los
+   * filtros y no puede depender: los contornos de Chamberí son los mismos
+   * busques pisos de 200.000 o de un millón. Y se piden aunque la capa esté
+   * apagada, porque encenderla no debería costar una espera de 279 kB — para
+   * eso están la compresión y el `Cache-Control` del servidor.
+   */
+  const neighbourhoods = useResource(
+    "neighbourhoods",
+    useCallback((signal: AbortSignal) => fetchNeighbourhoods(signal), []),
+  );
+  const pointsOfInterest = useResource(
+    "pois",
+    useCallback((signal: AbortSignal) => fetchPointsOfInterest(signal), []),
+  );
+
+  /*
+   * Los pasos de la pantalla de carga.
+   *
+   * Solo cuenta la primera vez: `data === null && loading` es "todavía no ha
+   * llegado nunca". Después, mover el mapa vuelve a poner `loading` a true y
+   * eso no debe hacer reaparecer la pantalla completa — para eso está el aviso
+   * discreto de la esquina del mapa.
+   */
+  const initialSteps = useMemo<LoadingStep[]>(() => {
+    const step = (label: string, resource: { data: unknown; error: string | null }): LoadingStep => ({
+      label,
+      state: resource.error !== null ? "error" : resource.data !== null ? "done" : "pending",
+    });
+    return [
+      step("Anuncios", mapData),
+      step("Opciones de búsqueda", facets),
+      step("Barrios", neighbourhoods),
+      step("Puntos de interés", pointsOfInterest),
+    ];
+  }, [mapData, facets, neighbourhoods, pointsOfInterest]);
+
+  const toggleOverlay = useCallback((key: keyof Overlays) => {
+    setOverlays((previous) => ({ ...previous, [key]: !previous[key] }));
+  }, []);
+
+  /**
+   * Todo lo que hay que saber de un barrio, por id.
+   *
+   * Sale de las facetas, que se piden una vez y no dependen de la selección, y
+   * es lo que convierte una lista de `LOCATIONID` —lo único que viaja en el
+   * filtro— en nombres para el resumen y en cajas para volar el mapa.
+   */
+  const neighbourhoodsById = useMemo(() => {
+    const map = new Map<string, NeighbourhoodFacet>();
+    for (const zone of facets.data?.zones ?? []) {
+      for (const entry of zone.neighbourhoods) map.set(entry.id, entry);
+    }
+    return map;
+  }, [facets.data]);
+
+  const neighbourhoodCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const [id, entry] of neighbourhoodsById) map.set(id, entry.count);
+    return map;
+  }, [neighbourhoodsById]);
+
+  const selectedNeighbourhoods = useMemo(
+    () =>
+      filters.neighbourhoods
+        .map((id) => neighbourhoodsById.get(id))
+        .filter((entry): entry is NeighbourhoodFacet => entry !== undefined),
+    [filters.neighbourhoods, neighbourhoodsById],
+  );
+
   /**
    * Accepts a value or an updater, and that is not a convenience.
    *
@@ -209,11 +302,60 @@ export default function App() {
   /** Picking a city both filters and moves the map, the way a portal does. */
   const changeZone = useCallback(
     (zone: string | null) => {
-      changeFilters((previous) => ({ ...previous, zone }));
+      // Elegir la ciudad suelta los barrios. Son la misma pregunta con distinto
+      // grano, y dejar las dos puestas obligaría a adivinar cuál manda.
+      changeFilters((previous) => ({ ...previous, zone, neighbourhoods: [] }));
       setFlyTo(zone === null ? null : zoneBounds(facets.data?.zones.find((z) => z.value === zone)));
     },
     [changeFilters, facets.data],
   );
+
+  /**
+   * Marcar o desmarcar un barrio, venga del mapa o del selector lateral.
+   *
+   * Los dos caminos acaban aquí a propósito: hacer clic en el polígono de
+   * Chamberí y marcarlo en la lista tienen que ser el mismo acto, y con un
+   * manejador para cada uno se separarían a la primera.
+   *
+   * Encender la capa de barrios al marcar uno no es un adorno: se puede llegar
+   * aquí desde la lista con la capa apagada, y entonces el mapa se filtraría
+   * sin enseñar por qué.
+   */
+  const toggleNeighbourhood = useCallback(
+    (id: string) => {
+      changeFilters((previous) => {
+        const on = previous.neighbourhoods.includes(id);
+        const next = on
+          ? previous.neighbourhoods.filter((item) => item !== id)
+          : [...previous.neighbourhoods, id];
+        return { ...previous, neighbourhoods: next, zone: null };
+      });
+      setOverlays((previous) =>
+        previous.neighbourhoods ? previous : { ...previous, neighbourhoods: true },
+      );
+    },
+    [changeFilters],
+  );
+
+  const clearNeighbourhoods = useCallback(() => {
+    changeFilters((previous) => ({ ...previous, neighbourhoods: [] }));
+  }, [changeFilters]);
+
+  /*
+   * Volar a lo elegido, y solo cuando cambia lo elegido.
+   *
+   * En un efecto y no dentro de `toggleNeighbourhood` porque las cajas vienen
+   * de las facetas, que pueden llegar después del primer clic. La dependencia
+   * es la lista de ids, no el objeto, para que mover el mapa a mano después no
+   * lo devuelva de un salto al barrio.
+   */
+  const selectionKey = filters.neighbourhoods.join(",");
+  useEffect(() => {
+    if (selectionKey === "") return;
+    const bounds = unionBounds(selectedNeighbourhoods);
+    if (bounds) setFlyTo(bounds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionKey, neighbourhoodsById]);
 
   const handleViewport = useCallback(
     (nextCamera: Camera, nextBbox: BoundingBox, nextZoom: number) => {
@@ -306,6 +448,8 @@ export default function App() {
           onSearchInViewChange={setSearchInView}
           showSearchInView={bbox !== null}
           onClearPolygon={clearPolygon}
+          onToggleNeighbourhood={toggleNeighbourhood}
+          onClearNeighbourhoods={clearNeighbourhoods}
         />
 
         <StatsPanel
@@ -314,6 +458,8 @@ export default function App() {
           error={stats.error}
           selectedZone={filters.zone}
           onZoneSelect={(zone) => changeZone(filters.zone === zone ? null : zone)}
+          selectedNeighbourhoods={filters.neighbourhoods}
+          onNeighbourhoodSelect={toggleNeighbourhood}
         />
       </aside>
 
@@ -388,6 +534,14 @@ export default function App() {
             layer={layer}
             onLayerChange={setLayer}
             onCellSelect={handleCellSelect}
+            neighbourhoodGeo={neighbourhoods.data}
+            pois={pointsOfInterest.data}
+            overlays={overlays}
+            onOverlayToggle={toggleOverlay}
+            zone={filters.zone}
+            selectedNeighbourhoods={filters.neighbourhoods}
+            neighbourhoodCounts={neighbourhoodCounts}
+            onToggleNeighbourhood={toggleNeighbourhood}
           />
         ) : view === "list" ? (
           <ListView
@@ -431,6 +585,8 @@ export default function App() {
         favourite={selectedId !== null && favourites.has(selectedId)}
         onToggleFavourite={favourites.toggle}
       />
+
+      <LoadingScreen steps={initialSteps} />
     </div>
   );
 }

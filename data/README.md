@@ -33,7 +33,7 @@ Rey-Blanco, Arbues, Lopez and Paez
 Coordinates and prices are anonymised with a small amount of random noise by the
 publishers, so it is fine for exploration but not for valuing a specific address.
 
-### Step 1 — export it to CSV
+### Step 1 — export it
 
 The dataset ships as an R package, so it has to be converted once. The script
 uses **base R only** — no `sf`, no `arrow`, no `devtools`:
@@ -50,6 +50,21 @@ It downloads the `.rda` files (cached in `data/.idealista18-rda/`), drops the
 
 That sort matters: the loader upserts on `ASSETID`, so the last row read wins and
 the surviving row is the most recent quarter.
+
+The same run also writes the two files of **fixed geography** the map draws on
+top, straight to `backend/geo/` (versioned with the repo, shipped in the Docker
+image, ~390 kB together):
+
+| File | From | Contents |
+| --- | --- | --- |
+| `neighbourhoods.geojson` | `<City>_Polygons` | 277 `MultiPolygon` features with `location_id`, `name`, `city` |
+| `points_of_interest.geojson` | `<City>_POIS` | 3 city centres, 801 metro stations, 3 main streets as `LineString` |
+
+Still base R: an `sfg MULTIPOLYGON` is a list of polygons, of rings, of two-column
+matrices — the exact nesting GeoJSON wants — and the CRS is already EPSG:4326.
+Two data problems are fixed on the way out, both documented in the script: one
+Valencia metro station has a flipped longitude sign (67 km out to sea, dropped),
+and the neighbourhood names needed rescuing from a double UTF-8 encoding.
 
 ### Step 2 — load it into SQLite
 
@@ -105,12 +120,45 @@ no `ASSETID`, no price or a non-positive one, missing coordinates, coordinates
 outside Spain, or when it fails Pydantic validation. On the real dataset every
 row passes; the checks exist for re-exports and edited files.
 
-### Known gap: neighbourhood names
+### Step 3 — locate each listing in its neighbourhood
 
-`Madrid_Polygons` & co. carry `LOCATIONID` / `LOCATIONNAME`, but the `_Sale`
-tables have no join key — matching a listing to its neighbourhood needs a
-point-in-polygon join, which needs the `sf` R package (or `shapely` on the
-Python side). Until then `zone` holds the city name.
+```bash
+cd backend
+python -m scripts.assign_neighbourhoods
+```
+
+The `_Sale` tables have **no `LOCATIONID`** — checked column by column in all
+three `.rda` — while `<City>_Polygons` has one per neighbourhood. There is no key
+to join on, so the connection is made geometrically: is this point inside that
+ring? The answer goes into two indexed columns (`neighbourhood_id`,
+`neighbourhood`), after which filtering by neighbourhood is an `IN` over an index
+instead of 277 polygon tests per request.
+
+| | |
+| --- | ---: |
+| Located | 149.693 of 149.923 (99,8 %) |
+| Neighbourhoods with at least one listing | 277 of 277 |
+| Outside every polygon | 230 (71 Madrid, 119 Barcelona, 40 Valencia) |
+| Runtime | 27 s |
+
+A `NULL` is an answer, not a failure: the dataset covers the metropolitan area
+and the polygons stop at the municipal boundary, so a flat in Pozuelo is in no
+neighbourhood of Madrid. `scripts.ensure_data` runs this on boot when it is
+needed, so a fresh container is not left with a neighbourhood filter that finds
+nothing.
+
+Re-run it after re-exporting the geography and after ingesting new listings:
+like the price estimates, these columns are derived, so an upsert leaves them
+alone.
+
+### Known gap: districts
+
+The polygons are **neighbourhoods** (`ZONELEVELID` 8), not districts. Searching
+for "Chamberí" or "Salamanca" in Madrid finds nothing: those are districts, and
+their neighbourhoods are called Arapiles, Trafalgar, Goya, Lista… Grouping them
+would need a lookup table the dataset does not ship.
+
+`zone` still holds the city name; the neighbourhood lives in its own column.
 
 ---
 

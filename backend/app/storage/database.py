@@ -40,6 +40,18 @@ CREATE TABLE IF NOT EXISTS listings (
     condition        TEXT,
     distance_to_center_km REAL,
     distance_to_metro_km  REAL,
+    -- Barrio, resuelto geométricamente contra los polígonos del dataset por
+    -- `python -m scripts.assign_neighbourhoods`. Derivado, como el precio
+    -- estimado: la fuente no lo trae. NULL significa "fuera de todos los
+    -- polígonos", que es un estado legítimo y frecuente -- el dataset cubre el
+    -- área metropolitana y los polígonos paran en el término municipal.
+    --
+    -- Se guardan el id y el nombre. El id es la clave del dataset y lo que
+    -- filtra la API, porque los nombres no son únicos: "Sant Antoni" existe en
+    -- Barcelona y en Valencia. El nombre viaja al lado para que una consulta o
+    -- un `SELECT` a mano se lean sin tener que cruzar con el GeoJSON.
+    neighbourhood_id      TEXT,
+    neighbourhood         TEXT,
     has_lift             INTEGER,
     has_terrace          INTEGER,
     has_parking          INTEGER,
@@ -124,6 +136,13 @@ DROP INDEX IF EXISTS idx_listings_zone_price;
 -- La distancia sí, porque un radio pequeño alrededor del centro descarta mucho.
 CREATE INDEX IF NOT EXISTS idx_listings_center ON listings (distance_to_center_km);
 
+-- Sirve el filtro por barrio, que es el más selectivo de todos: 277 valores
+-- sobre 150k filas, así que uno solo deja unos cientos. Las tres columnas de
+-- cola lo hacen cubridor para el `COUNT(*)` y para las medias de precio y de
+-- €/m² que pide el resumen del barrio, que se piden juntos y siempre.
+CREATE INDEX IF NOT EXISTS idx_listings_neighbourhood
+    ON listings (neighbourhood_id, price, size_m2) WHERE neighbourhood_id IS NOT NULL;
+
 -- Serves the bargain filter and ordering by deviation. Partial, because only
 -- scored rows can ever match: it indexes ~1/3 of the table instead of all of it.
 CREATE INDEX IF NOT EXISTS idx_listings_deviation
@@ -157,7 +176,7 @@ CREATE INDEX IF NOT EXISTS idx_listings_recent
 
 #: Bumped whenever an existing index or column changes shape rather than being
 #: added. See Database._migrate.
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 class Database:
@@ -257,6 +276,8 @@ class Database:
         "has_garden": "INTEGER",
         "has_storage": "INTEGER",
         "has_wardrobes": "INTEGER",
+        "neighbourhood_id": "TEXT",
+        "neighbourhood": "TEXT",
     }
 
     def init_schema(self) -> None:
@@ -310,9 +331,14 @@ class Database:
             # v3: idx_listings_recent gained latitude and longitude.
             connection.execute("DROP INDEX IF EXISTS idx_listings_recent")
 
-        # v4 solo añade columnas, que _add_missing_columns ya ha creado antes de
-        # llegar aquí. Se anota igualmente para que la versión cuente la historia
-        # completa y la siguiente migración sepa desde dónde parte.
+        # v4 y v5 solo añaden columnas, que _add_missing_columns ya ha creado
+        # antes de llegar aquí. Se anotan igualmente para que la versión cuente
+        # la historia completa y la siguiente migración sepa desde dónde parte.
+        #
+        # Ojo con v5: las columnas de barrio nacen vacías y hay que rellenarlas
+        # con `python -m scripts.assign_neighbourhoods`. Una base migrada pero
+        # sin ese paso responde correctamente a todo salvo al filtro por barrio,
+        # que no encuentra nada. El script lo dice al arrancar.
 
         connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         return True

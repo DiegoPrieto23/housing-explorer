@@ -72,13 +72,25 @@ def _price_distribution(
 )
 def get_stats(query: Annotated[StatsQuery, Query()], repository: RepositoryDep) -> StatsResponse:
     overall = OverallStats(**repository.overall_stats(query))
+
+    # Con la búsqueda ya acotada a una ciudad o a unos barrios, cortar por
+    # ciudad devuelve una fila que repite la cabecera. El mismo agregado por
+    # barrio es lo que responde a "¿dónde dentro de Madrid sale a cuenta?".
+    by_neighbourhood = query.zone is not None or bool(query.neighbourhoods)
+
     # overall already counted the rows; reuse it to pick the zone strategy.
-    by_zone = [ZoneStats(**row) for row in repository.zone_stats(query, total=overall.count)]
+    by_zone = [
+        ZoneStats(**row)
+        for row in repository.zone_stats(
+            query, total=overall.count, by_neighbourhood=by_neighbourhood
+        )
+    ]
     distribution = _price_distribution(repository, query, overall, query.bins)
 
     return StatsResponse(
         overall=overall,
         by_zone=by_zone,
+        by_zone_is_neighbourhood=by_neighbourhood,
         by_rooms=[Bucket(**row) for row in repository.by_rooms(query)],
         by_size=[Bucket(**row) for row in repository.by_size(query)],
         by_distance=[Bucket(**row) for row in repository.by_distance(query)],

@@ -24,7 +24,17 @@ export interface Filters {
   roomsMin: number | null;
   operation: Operation | null;
   propertyType: PropertyType | null;
+  /** Ciudad. Excluyente con `neighbourhoods`: o toda la ciudad, o barrios. */
   zone: string | null;
+  /**
+   * Barrios concretos, por `LOCATIONID`.
+   *
+   * Se piden en OR —un piso está en un barrio— al revés que los extras, que se
+   * piden todos. Y son excluyentes con `zone` a propósito: «Madrid entero» y
+   * «estos tres barrios de Madrid» son dos preguntas distintas, y dejar las dos
+   * puestas a la vez obliga al usuario a adivinar cuál gana.
+   */
+  neighbourhoods: string[];
   /** Set while the map is the active view and "buscar en el área" is on. */
   bbox: BoundingBox | null;
   bathroomsMin: number | null;
@@ -56,6 +66,7 @@ export const EMPTY_FILTERS: Filters = {
   operation: null,
   propertyType: null,
   zone: null,
+  neighbourhoods: [],
   bbox: null,
   polygon: null,
   bathroomsMin: null,
@@ -80,6 +91,9 @@ export function activeFilterCount(filters: Filters): number {
     // enseña el número de extras marcados junto a este, y dos contadores que
     // dicen cosas distintas de lo mismo se leen como un error.
     if (key === "amenities") return total + filters.amenities.length;
+    // Igual que los extras: cada barrio elegido es un filtro, y el selector
+    // enseña esa misma cuenta a su lado.
+    if (key === "neighbourhoods") return total + filters.neighbourhoods.length;
     return total + (filters[key] !== null ? 1 : 0);
   }, 0);
 }
@@ -115,6 +129,7 @@ export function toSearchParams(filters: Filters): URLSearchParams {
   // Repetido, no separado por comas: es como el backend declara la lista, y
   // evita tener que elegir un separador que ningún valor pueda contener.
   for (const amenity of filters.amenities) params.append("extras", amenity);
+  for (const id of filters.neighbourhoods) params.append("barrio", id);
   if (filters.bargainsOnly) params.set("solo_chollos", "true");
 
   if (filters.bbox) {

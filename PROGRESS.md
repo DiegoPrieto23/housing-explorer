@@ -12,20 +12,23 @@ el resto del sistema.
 
 | Comprobación | Resultado |
 | --- | --- |
-| Tests del backend (`pytest`) | 152 pasan, 1 se salta (necesita el dataset grande) |
+| Tests del backend (`pytest`) | 193 pasan, 1 se salta (necesita el dataset grande) |
 | Tests del frontend | **Ninguno**: no hay runner configurado |
 | Typecheck del frontend (`tsc --noEmit`) | Sin errores |
-| Build de producción (`vite build`) | 373 kB, 114 kB comprimido |
+| Build de producción (`vite build`) | 385 kB, 118 kB comprimido |
 | Notebook (`nbconvert --execute`) | 58 celdas, 0 errores, 12 gráficos |
-| `data/housing.db` | 137 MB · esquema v4 · 32 columnas |
+| `data/housing.db` | 154 MB · esquema **v5** · 34 columnas |
 | Anuncios | 149.923 (Madrid 75.804 · Barcelona 46.728 · Valencia 27.391) |
 | Con precio estimado | 149.923 de 149.923 (100 %) · 6.227 chollos (4,2 %) |
-| Docker | **Verificado de punta a punta.** Imágenes construidas (315 y 369 MB), volumen `housing-explorer_housing-data` con la base |
-| Git | Repo inicializado, **sin ningún commit todavía**: 91 ficheros en el índice |
+| Geografía (`backend/geo/`) | 277 barrios y 807 puntos de interés · 386 kB versionados |
+| Anuncios con barrio asignado | 149.693 de 149.923 (**99,8 %**); los 230 restantes caen fuera del término municipal |
+| Docker | **Verificado de punta a punta.** Imágenes construidas, volumen `housing-explorer_housing-data` con la base, y los dos GeoJSON dentro de `/app/geo` |
+| Git | `main` en `github.com/DiegoPrieto23/housing-explorer`, con el commit inicial. El trabajo de barrios sigue **sin commitear** |
 
 Ahora mismo **no hay nada corriendo**: ni contenedores ni servidores de
-desarrollo. `docker compose up -d` lo levanta en segundos (las imágenes están
-construidas y el volumen conserva la base), o `.\start.ps1` en el host.
+desarrollo. Docker Desktop sí está arrancado. `docker compose up -d` levanta
+todo en segundos (las imágenes están construidas y el volumen conserva la base),
+o `.\start.ps1` en el host.
 
 ---
 
@@ -36,8 +39,11 @@ de lo más reciente a lo más antiguo. Esto es el resumen de una pantalla.
 
 **Dos vistas y una lista de favoritos**, sobre el mismo conjunto filtrado:
 
-- **Mapa** con cuatro capas base (OSM, satélite de Esri, OpenTopoMap, CARTO) y
-  un conmutador **Marcadores / Calor**. Sin tope de anuncios: el servidor decide
+- **Mapa** con cuatro capas base (OSM, satélite de Esri, OpenTopoMap, CARTO),
+  un conmutador **Marcadores / Calor** y dos capas de contexto que se encienden
+  por separado: los **barrios** (277 contornos, clicables para buscar dentro de
+  uno) y los **puntos de interés**
+  (centro de la ciudad, bocas de metro y calle principal como línea). Sin tope de anuncios: el servidor decide
   entre marcadores individuales y celdas agregadas según cuántos coincidan, y el
   total es siempre exacto. Los marcadores llevan icono por tipo de vivienda, pin
   hueco si es alquiler y anillo rojo si es chollo. La capa de calor colorea por
@@ -46,15 +52,22 @@ de lo más reciente a lo más antiguo. Esto es el resumen de una pantalla.
   desviación.
 - **♥ Favoritos**, en `localStorage`, sin cuenta ni backend.
 
+**Selector de dónde buscar**: un árbol de ciudad → barrios por orden
+alfabético, con buscador de texto que ignora acentos, selección múltiple y
+fichas de lo elegido.
+
 **Panel de filtros**: operación, ciudad, precio, superficie, habitaciones, tipo
 de inmueble y, plegados en «Más filtros», baños, planta, año, estado, extras
 (ascensor, garaje, piscina…) y distancia máxima al centro y al metro. Más el
 interruptor **★ Solo chollos**.
 
 **Panel de estadísticas**, que sigue los filtros activos: precio medio, mediana,
-€/m², rango habitual, histograma de precios, tabla por zona, €/m² por
-habitaciones y por superficie, curva de €/m² por distancia al centro, e impacto
-de cada extra.
+€/m², rango habitual, histograma de precios, tabla por zona —**por barrio** en
+cuanto hay una ciudad elegida—, €/m² por habitaciones y por superficie, curva de
+€/m² por distancia al centro, e impacto de cada extra.
+
+**Pantalla de carga** al abrir, con los cuatro pasos de la primera vista y una
+barra de progreso; se aparta en unos 3 segundos.
 
 **Modelo de precio** entrenado en el notebook (MAE 47.943 €, MAPE 14,1 %,
 R² 0,935) que estima cada anuncio y marca como «posible chollo» los que se piden
@@ -128,6 +141,9 @@ Pendiente / limitaciones conocidas del origen:
       percentiles (p25/p50/p75/p90/p99), media por zona e histograma de precios
 - [x] `GET /api/health` y `GET /api/health/ready` (esta reporta cuántos anuncios hay)
 - [x] `GET /api/sources` — fuentes registradas, si están sanas y cuánto han cargado
+- [x] `GET /api/neighbourhoods` — los 277 polígonos de barrio, en GeoJSON. Único
+      endpoint (con el siguiente) que no toca SQLite: lee `backend/geo/`
+- [x] `GET /api/points-of-interest` — centro, bocas de metro y calle principal
 
 ### Filtros (los aceptan tanto `/listings` como `/stats`)
 
@@ -135,7 +151,10 @@ Pendiente / limitaciones conocidas del origen:
 - [x] `m2_min`, `m2_max`
 - [x] `habitaciones` (exacto) y `habitaciones_min` (mínimo)
 - [x] `tipo_operacion` (venta / alquiler), `tipo_inmueble` (piso, casa, estudio…)
-- [x] `zona` (ciudad o barrio, sin distinguir mayúsculas), `source`
+- [x] `zona` (ciudad, sin distinguir mayúsculas), `source`
+- [x] `barrio` — repetible, por `LOCATIONID`. En **OR** entre ellos, al revés que
+      `extras`. Toma el id y no el nombre porque hay un «Sant Antoni» en Barcelona
+      y otro en Valencia
 - [x] Bounding box `lat_min` / `lat_max` / `lon_min` / `lon_max` — los cuatro o ninguno
 - [x] `poligono` — área dibujada a mano, `lat,lon;lat,lon;...`. Se resuelve **dentro de
       SQL** con una función registrada, precedida del bounding box del polígono para que
@@ -185,6 +204,11 @@ Pendiente:
       sobre el marcador; carga el anuncio completo con `fetchListing()`
 - [x] **Capas base intercambiables**: Mapa (OSM), Satélite (Esri), Terreno (OpenTopoMap)
       y Claro (CARTO), cada una con su atribución
+- [x] **Capas de contexto** conmutables por separado: barrios (`NeighbourhoodLayer.tsx`)
+      y puntos de interés (`PoiLayer.tsx`). Ver la sección «Barrios, puntos de interés
+      y pantalla de carga»
+- [x] **Pantalla de carga inicial** (`LoadingScreen.tsx`) con los cuatro pasos de la
+      primera vista y barra de progreso
 - [x] **Dibujar la zona de búsqueda a mano** (`DrawControl.tsx`): se traza arrastrando,
       se simplifica en el navegador y viaja como `poligono=lat,lon;...`. Filtra la lista,
       el mapa y las estadísticas por igual
@@ -329,6 +353,352 @@ Pendiente:
 - [ ] Barrios administrativos de verdad en vez del k-means (§4.3 del notebook)
 - [ ] Validación espacial: la partición es aleatoria, no por zonas
 - [ ] Intervalos de predicción con `loss="quantile"` en vez de un número suelto
+
+---
+
+## Buscar por barrio ✅ Completa
+
+Los polígonos ya se dibujaban; lo que faltaba era poder **buscar** con ellos.
+Con esto cae, además, el punto 4 de «Próximos pasos», que llevaba abierto desde
+la primera auditoría.
+
+### El paso que lo hace posible
+
+- [x] `python -m scripts.assign_neighbourhoods` escribe en cada anuncio en qué
+      barrio cae, resolviéndolo por geometría. Hace falta porque el dataset de
+      anuncios **no trae `LOCATIONID`** —comprobado columna a columna en los
+      tres `.rda`—, así que no hay clave por la que unir un piso con su barrio
+- [x] Se hace **una vez, fuera de línea**, y el resultado va a dos columnas
+      indexadas (`neighbourhood_id`, `neighbourhood`, esquema v5). Por consulta
+      era la alternativa y no está cerca: el filtro de «dibujar zona» ya paga
+      una llamada a Python por fila candidata, y sale a cuenta porque es **un**
+      polígono sobre unos miles de filas; aquí serían 277 sobre 149.923 en cada
+      petición
+- [x] Índice espacial de rejilla (0,01°, ~1,1 km): la caja de cada polígono se
+      estampa en las celdas que cubre y localizar un punto prueba el puñado que
+      podría contenerlo, no los 277
+
+| | |
+| --- | ---: |
+| Anuncios localizados | 149.693 de 149.923 (**99,8 %**) |
+| Barrios con al menos un anuncio | 277 de 277 |
+| Fuera de todo polígono | 230 (71 Madrid · 119 Barcelona · 40 Valencia) |
+| Proceso completo | 27 s |
+
+Esos 230 no son un fallo: el dataset cubre el área metropolitana y los polígonos
+paran en el término municipal. Un piso en Pozuelo no está en ningún barrio de
+Madrid, y `NULL` es la respuesta correcta.
+
+- [x] `scripts.ensure_data` lo ejecuta al arrancar si falta, para que un
+      contenedor recién levantado no se encuentre el filtro por barrio
+      devolviendo cero sin explicación
+
+### Backend
+
+- [x] Filtro `barrio`, repetible: `?barrio=<LOCATIONID>&barrio=<LOCATIONID>`.
+      En **OR**, al revés que `extras`, que se exigen todos — un piso está en un
+      barrio, no en cinco
+- [x] Toma el `LOCATIONID` y no el nombre porque los nombres **no son únicos**:
+      hay un «Sant Antoni» en Barcelona y otro en Valencia. Es el único caso de
+      277, y basta para que filtrar por nombre fuera silenciosamente incorrecto
+- [x] Índice parcial `(neighbourhood_id, price, size_m2)`, cubridor para el
+      recuento y las medias que pide el resumen. Es la cláusula más selectiva de
+      toda la API: un barrio son unos cientos de filas de 150.000
+- [x] Las facetas anidan los barrios dentro de su ciudad, **por orden
+      alfabético** y con sus recuentos y sus cajas
+- [x] La lista sale de los **polígonos**, no de un `GROUP BY` sobre los anuncios:
+      un barrio sin anuncios sigue existiendo, sigue teniendo forma en el mapa y
+      tiene que poder buscarse — apagado y con un cero, no ausente
+- [x] Y las cajas salen del polígono, que es la extensión real del barrio, no de
+      dónde caigan sus anuncios
+- [x] Tope de 277 barrios por petición: pedirlos todos es no filtrar, y pedir más
+      es una petición mal formada (422)
+- [x] 23 tests nuevos (`tests/test_neighbourhoods.py`), sobre los polígonos
+      reales y con direcciones reales comprobadas a mano: Sol, Jerónimos, La
+      Dreta de l'Eixample, Sant Francesc, y Pozuelo como caso de «en ninguno»
+
+### En el mapa
+
+- [x] **Un clic en el polígono selecciona sus viviendas**, y solo esas. Antes
+      abría una etiqueta con el nombre, que es lo que un mapa hace cuando no
+      puede hacer nada mejor
+- [x] El barrio elegido se queda resaltado y por delante de sus vecinos, para que
+      el borde compartido no lo tape el que se dibujó después
+- [x] La capa de barrios se enciende sola al marcar uno: se puede llegar desde la
+      lista de la izquierda con la capa apagada, y un mapa que se filtra sin
+      enseñar por qué es un mapa roto
+- [x] Las estadísticas del barrio salen en el panel de la izquierda, que ya sigue
+      a los filtros activos
+
+Hubo además una tarjeta de resumen flotando en la esquina superior derecha del
+mapa, y **se ha quitado**: enseñaba exactamente los mismos cuatro números que el
+panel izquierdo, tres centímetros más allá. Dos sitios diciendo lo mismo no son
+el doble de información, son una pregunta sobre cuál de los dos mirar. Con ella
+se fue su segunda petición a `/stats` —la que iba sin *bounding box*— y 2,5 kB de
+CSS.
+
+### «Dónde buscar», reescrito
+
+El `<select>` de tres opciones no daba más de sí con 277 barrios: no anida, así
+que «Sol» y «Sants» saldrían en una lista plana sin decir de qué ciudad son; y no
+deja elegir varios sin `multiple`, que obliga a mantener Ctrl pulsado y no enseña
+qué llevas elegido.
+
+- [x] **Árbol** ciudad → barrios, por orden alfabético. Ordenar por punto de
+      código dejaría «Águilas» detrás de «Zofío»; se compara sin diacríticos,
+      como hace un índice en español
+- [x] **Varios a la vez**, con fichas de lo elegido y un × en cada una
+- [x] **Buscador de texto** insensible a acentos y a la eñe: `malasana` encuentra
+      «Malasaña-Universidad». Si lo escrito coincide con una ciudad, se enseña
+      entera. **Enter** marca la primera coincidencia y limpia la caja
+- [x] Contador por ciudad, para que plegarla no esconda que hay un filtro puesto
+      dentro
+- [x] Ciudad y barrios son **excluyentes**: elegir barrios suelta la ciudad y al
+      revés. Son la misma pregunta con distinto grano, y tener las dos puestas
+      obligaría al usuario a adivinar cuál manda
+- [x] Alto máximo y desplazamiento propio: una lista de 135 filas que crece
+      empuja el resto de los filtros fuera de la pantalla
+
+Y una diferencia que se nota: **una ciudad no es la suma de sus barrios**. Los
+135 de Madrid dan 75.733 anuncios; «Madrid» da 75.804. La diferencia son los 71
+de fuera del término. Por eso la ciudad sigue siendo una opción propia y no un
+«marcar todos».
+
+### La tabla de la izquierda, de paso
+
+- [x] «Precio medio por zona» pasa a cortarse **por barrio** en cuanto la
+      búsqueda está acotada a una ciudad. Antes, con Madrid elegido, era una fila
+      repitiendo la cabecera; ahora son las 135 que responden a «¿dónde dentro de
+      Madrid sale a cuenta?», con cabecera fija y desplazamiento propio
+- [x] Un clic en una fila marca o desmarca ese barrio
+
+Cambiar el corte obligó a cambiar la estrategia de cálculo. El `GROUP BY` cuesta
+una consulta de mediana **por grupo**: tres no son nada, 135 sí. Cortando por
+barrio se hace siempre el barrido —una lectura de las filas que coinciden,
+plegada en Python—, porque el coste deja de seguir al número de filas y pasa a
+seguir al número de grupos, que solo crece según se ingieren ciudades:
+
+| Madrid, 135 barrios | barrido | `GROUP BY` |
+| --- | ---: | ---: |
+| con área visible | **1.154 ms** | 1.352 ms |
+| con área dibujada | **328 ms** | 525 ms |
+| sin más filtros | 724 ms | **591 ms** |
+
+Pierde el último por 133 ms y gana los dos que duelen. Y como el corte por barrio
+solo ocurre con una ciudad ya elegida, el barrido nunca lee más de una ciudad.
+
+- [x] Y ya que cada anuncio sabe su barrio, las tarjetas y la ficha de detalle lo
+      enseñan en lugar de la ciudad. El dataset no trae dirección, así que hasta
+      ahora las 75.804 tarjetas de Madrid decían todas «Madrid»
+
+### Comprobado en el navegador
+
+Edge sin ventana por CDP, con eventos de confianza y capturas:
+
+- Buscar `sol` → un resultado; **Enter** lo marca, la caja se limpia, el total
+  pasa a 709 anuncios y las estadísticas dicen `5.159 €/m² · 623.041 € · mediana
+  534.000 €`
+- Marcar «Goya» con la casilla → dos fichas, 2.344 anuncios, y la tabla con las
+  dos filas
+- Madrid entera → 135 filas en la tabla, con desplazamiento, encabezadas por
+  Lavapiés-Embajadores, Malasaña-Universidad, Goya…
+- Clic sobre el polígono de El Pardo → 23 anuncios y la ciudad se suelta sola
+- Desplegar Madrid → 135 barrios en orden: 12 de Octubre-Orcasur, Abrantes,
+  Acacias, Adelfas, Aeropuerto, **Águilas**… hasta Zofío. La Á en su sitio
+- Cero errores de consola
+
+### Un fallo que la comprobación destapó
+
+La etiqueta del polígono tenía que decir cuántos anuncios hay en él, y decía la
+ciudad. El contenido se componía al enlazar la etiqueta, o sea al montar la capa,
+y los recuentos llegan **después**, con las facetas. Como no se puede reconstruir
+277 polígonos cada vez que cambia un número, la etiqueta se compone ahora al
+pasar el ratón, leyendo los recuentos por referencia. Sin la captura no se habría
+visto: la etiqueta salía, con texto plausible, y solo era el texto equivocado.
+
+### Lo que sigue sin poder hacer
+
+Los polígonos son **barrios**, no distritos: en Madrid son los 135 barrios
+(`ZONELEVELID` 8), así que buscar «Chamberí» o «Salamanca» no encuentra nada —son
+distritos, y sus barrios se llaman Arapiles, Trafalgar, Goya, Lista… Agruparlos
+haría falta una tabla de correspondencias que el dataset no trae.
+
+---
+
+## Barrios, puntos de interés y pantalla de carga ✅ Completa
+
+El dataset traía tres objetos por ciudad y solo se estaba usando uno. Esta fase
+saca los otros dos.
+
+| Objeto de `idealista18` | Qué es | Dónde acaba |
+| --- | --- | --- |
+| `<Ciudad>_Sale` | los 149.923 anuncios | `data/idealista18_*.csv` → SQLite |
+| `<Ciudad>_Polygons` | 277 barrios con `LOCATIONID` y `LOCATIONNAME` | `backend/geo/neighbourhoods.geojson` |
+| `<Ciudad>_POIS` | centro, bocas de metro y calle principal | `backend/geo/points_of_interest.geojson` |
+
+### Ingesta
+
+- [x] `scripts/export_idealista18.R` escribe ahora también los dos GeoJSON, en la
+      misma pasada y **sin dependencias nuevas**. Sigue siendo base R: no hace
+      falta `sf` ni para los polígonos, porque un `sfg MULTIPOLYGON` ya es una
+      lista de polígonos, de anillos y de matrices de dos columnas —el
+      anidamiento exacto que pide GeoJSON— y el CRS del dataset ya es EPSG:4326
+- [x] Coordenadas a 5 decimales (1,1 m): un tercio menos de fichero por debajo de
+      la precisión que el dato tiene
+- [x] Salida en **ASCII puro**: todo lo que pasa de 127 sale como `\uXXXX`, así
+      que el fichero versionado no depende de que nadie negocie un encoding
+- [x] El script **falla en voz alta** si el dataset cambia de forma: geometría que
+      no sea `MULTIPOLYGON`, falta de `LOCATIONID`, más de un centro por ciudad, o
+      una calle principal que no reconoce
+
+### Tres problemas de datos, y qué se hizo con cada uno
+
+1. **Una estación de metro en mitad del Mediterráneo.** Valencia trae una boca en
+   longitud +0,4026 cuando toda la red está en longitudes negativas: el signo
+   cambiado la deja a 67 km del centro, en el mar. Se **descarta**, no se
+   corrige. Invertir el signo daría una ubicación plausible —y probablemente la
+   correcta— pero sería una suposición mía, no un dato. El corte está en 40 km; el
+   metro de Madrid llega de verdad a 25 (Arganda), así que hay margen de sobra.
+
+2. **Nombres doblemente codificados, y este me lo comí.** La primera versión
+   escribió «TimÃ³n» en vez de «Timón» y la validación pasó: los bytes son ASCII,
+   el JSON es válido y al imprimirlo en una consola cp1252 se ve bien. Los
+   nombres del `.rda` son UTF-8 sin codificación declarada y R en Windows arranca
+   en una página Latin-1, así que `enc2utf8()` los convirtió una segunda vez. Lo
+   que lo destapó fue mirar los bytes del fichero (`Ã³` donde tenía que
+   haber `ó`), no la salida del programa. Arreglado marcando la codificación
+   antes de convertir, y con un test que afirma que «Timón» está escrito «Timón».
+
+3. **Calles con zigzag.** Los puntos de la calle principal vienen *casi* en orden.
+   Recorrida tal cual, la Diagonal mide 6.995 m; ordenada, 6.720, que es la
+   distancia entre sus extremos. Se ordenan por la dirección dominante (primer
+   componente principal) y el script **comprueba** que el recorrido no se aparta
+   más de un 15 % de la recta, porque ordenar a lo largo de una recta solo vale si
+   la calle es recta. Las tres lo son; una cuarta que no lo fuera daría un aviso.
+
+### Backend
+
+- [x] `GET /api/neighbourhoods` — los 277 polígonos, en GeoJSON
+- [x] `GET /api/points-of-interest` — 3 centros, 801 bocas de metro y 3 calles
+- [x] Los dos aceptan `?ciudad=Madrid` (sin distinguir mayúsculas) y devuelven
+      `application/geo+json` con `Cache-Control` de un día
+- [x] `GET /api/neighborhoods` como alias, fuera del OpenAPI: el código es
+      británico, quien escriba la grafía americana no merece un 404 por una letra
+- [x] **Ficheros, no tabla.** Son 277 polígonos y 807 puntos que no cambian nunca,
+      se leen enteros, no se cruzan con ningún anuncio y no se escriben. Una tabla
+      compraría índices y filtrado, que aquí no hacen falta, y costaría una
+      migración de esquema, un cargador y un segundo sitio donde la ingesta puede
+      quedarse a medias. Viven en `backend/geo/`, se versionan y viajan en la
+      imagen, igual que el modelo de precio
+- [x] Se sirven **bytes ya serializados**, no un modelo que FastAPI validaría y
+      volvería a codificar: pasar 12.101 vértices por Pydantic en cada petición
+      cuesta más que la lectura de disco. **Medido: 5 ms por petición**
+- [x] Un fichero que falta o está a medias es un **503 que dice qué comando lo
+      genera**, no un 500 ni una capa vacía sin explicación
+- [x] 18 tests nuevos (`tests/test_geodata.py`), sobre los ficheros reales y no
+      sobre fixtures: el fallo que interesa cazar es «la exportación escribió algo
+      que el mapa no puede dibujar», y eso un fixture escrito a mano no lo caza
+
+### Compresión, de paso
+
+Mandar 278 kB de fronteras pedía `GZipMiddleware`. Activarlo dejó claro que su
+nivel por defecto es una mala idea:
+
+| nivel | tamaño | tiempo |
+| ---: | ---: | ---: |
+| 1 | 82 kB | 4,9 ms |
+| **4 (elegido)** | **71 kB** | **7,6 ms** |
+| 6 | 67 kB | 16,8 ms |
+| 9 (el de Starlette) | 66 kB | 71,3 ms |
+
+Del 4 al 9 se ganan 5 kB y se pagan 64 ms de CPU **por petición**: medido de
+punta a punta, la petición pasaba de 5 ms a 76. Este servidor ya se cayó una vez
+por contención de CPU entre hilos, así que va en el 4. Se benefician también
+`/stats` y las celdas del mapa.
+
+### Frontend
+
+- [x] **Capa de barrios**: contornos con el nombre al pasar el ratón (etiqueta
+      `sticky`, que sigue al cursor en vez de anclarse a un centroide que en un
+      barrio alargado cae lejos) y al hacer clic, para quien no puede sostener el
+      ratón encima. Encendida al abrir
+- [x] Con una ciudad seleccionada, los barrios de las otras **se apagan en vez de
+      desaparecer**: siguen dando referencia de dónde está uno
+- [x] **Capa de puntos de interés**: diana para el centro, punto rojo por boca de
+      metro, y la calle principal como **una línea**, no como 155 puntos sueltos.
+      Apagada al abrir: 801 bocas a vista de país son una mancha
+- [x] Las dos se conmutan con botones en el propio mapa, **independientes entre sí
+      y del conmutador Marcadores/Calor**. Van en controles separados a propósito:
+      aquello elige entre dos formas de pintar *los mismos anuncios*, y esto son
+      dos cosas distintas que se dibujan encima. Son `aria-pressed`, no
+      `role="tab"`, porque los dos pueden estar encendidos a la vez
+- [x] El metro se dibuja como círculos en el **canvas** y no como iconos: son 801,
+      y 801 iconos son 801 nodos del DOM permanentes que a vista de país se
+      amontonan hasta ser ilegibles igualmente. Con el mapa en `preferCanvas` no
+      crean ni un nodo
+- [x] Las bocas **no llevan nombre porque el dataset no lo trae**:
+      `<Ciudad>_POIS$Metro` son dos columnas, `Lon` y `Lat`. La etiqueta dice
+      «Estación de metro» y no se inventa cuál
+- [x] Ambas capas son imperativas (`L.geoJSON` sobre el mapa) y no componentes
+      `<GeoJSON>` de react-leaflet: son 12.101 vértices, y react-leaflet no
+      actualiza un `<GeoJSON>` cuando cambian sus props, lo recrea entero
+- [x] El trazo empezó en `weight: 1` / `opacity: 0.55` y **en una captura a zoom de
+      ciudad no se veía**, ahogado por las líneas rosas y grises de OpenStreetMap.
+      Subido a 1,4 / 0,85
+
+### Pantalla de carga
+
+- [x] Capa a pantalla completa con los cuatro pasos de la primera vista —anuncios,
+      opciones de búsqueda, barrios y puntos de interés—, una marca por paso y una
+      barra de progreso. **Medido: 3,2 s** hasta que se aparta, en local
+- [x] Enumera los pasos en vez de girar una rueda sin más, porque tardan cosas
+      distintas y cuando uno se atasca conviene ver cuál
+- [x] Es una **capa por encima, no una puerta antes de montar el mapa**, y la
+      distinción no es un atajo: la petición de anuncios necesita un *bounding
+      box*, el *bounding box* sale del viewport, y el viewport no existe hasta que
+      Leaflet se ha montado y ha medido su contenedor. Bloquear el renderizado
+      sería esperar a un dato que solo se puede pedir después de renderizar. El
+      mapa se monta debajo, tapado
+- [x] Un paso que falla **no bloquea**: se marca en rojo, la pantalla se aparta
+      igual y lo que falte se explica en su sitio. Una capa de barrios que no
+      cargó no es motivo para no enseñar el mapa
+- [x] `pointer-events: none` durante el desvanecido, para que la capa invisible no
+      se coma el primer clic
+- [x] Respeta `prefers-reduced-motion`: la rueda deja de girar y la barra sigue
+      contando, que es donde está la información
+
+### Comprobado en el navegador, no solo en el código
+
+Edge sin ventana por CDP, con capturas:
+
+- La pantalla de carga aparece con los cuatro pasos en `pending` y se desmonta a
+  los 3,2 s
+- `/api/neighbourhoods` y `/api/points-of-interest` se piden **una vez** (dos en
+  desarrollo, por el doble montaje de `StrictMode`)
+- Prueba objetiva de que la capa pinta: **292.563 píxeles opacos** en el lienzo
+  con los barrios encendidos, **0** apagados, y exactamente los mismos 292.563 al
+  volver a encenderla
+- 12 barrios distintos etiquetados al pasar el ratón, con los nombres bien:
+  `Natzaret`, `El Grau`, `Camí de Vera`, `Ciutat de les Arts i de les Ciencies`,
+  `Malilla`, `La Punta`…
+- Las etiquetas necesitan eventos **de confianza** (`Input.dispatchMouseEvent`):
+  un `MouseEvent` sintético no dispara el *hit test* del renderizador canvas de
+  Leaflet, y la primera comprobación dio un falso negativo por eso
+- Cero errores de consola
+- Imagen de Docker reconstruida y verificada: los dos GeoJSON están en `/app/geo`
+  y `geodata.summary()` los lee dentro del contenedor
+
+### Lo que esta fase **no** hace
+
+Los barrios se dibujan pero **no filtran**. El dataset de anuncios no trae
+`LOCATIONID` —comprobado columna a columna en los tres `.rda`—, así que unir un
+anuncio con su barrio solo puede hacerse geométricamente. Es exactamente la tarea
+pendiente de «mapear barrios a `zone`», y ahora al menos existen los polígonos
+con los que hacerla.
+
+Y a zoom de ciudad con muchas celdas agregadas encima, los contornos quedan
+tapados por los círculos de recuento. Se ven bien en cuanto hay menos celdas o se
+usa la capa de calor. No es de esta fase: es la densidad del agregado del mapa.
 
 ---
 
@@ -874,9 +1244,12 @@ Por orden de prioridad:
    la API. Es el hueco más grande que queda: 12 componentes y 0 tests, y ya han
    aparecido por aquí dos fallos que un test habría cazado —el closure obsoleto de
    los extras y el contador que contaba otra cosa.
-4. **Mapear distritos y barrios** a `zone`. Ahora mismo «zona» es la ciudad, así que
-   las estadísticas por zona solo distinguen tres cosas y el mapa agrupa por ciudad
-   entera a zoom bajo. El dataset trae los códigos; falta traducirlos a nombres.
+4. **Agrupar los barrios en distritos.** Los polígonos del dataset son barrios
+   (`ZONELEVELID` 8), así que buscar «Chamberí» o «Salamanca» no encuentra nada:
+   son distritos, y sus barrios se llaman Arapiles, Trafalgar, Goya, Lista…
+   Agruparlos daría un nivel intermedio útil —135 barrios son muchos para elegir
+   de uno en uno— pero hace falta una tabla de correspondencias que el dataset no
+   trae.
 5. **Decidir el campo de foto en `Listing`** antes de escribir el conector real: es la
    única decisión de la Fase 4 que arrastra cambios en varias capas.
 6. **Plegar el panel lateral en móvil.** Con los filtros nuevos ocupa bastante más
@@ -899,6 +1272,9 @@ Por orden de prioridad:
 
 | Fecha | Qué se hizo |
 | --- | --- |
+| 2026-08-25 | Fuera la tarjeta de resumen de la esquina del mapa: repetía los cuatro números que el panel izquierdo ya daba, y con ella se va su segunda petición a `/stats`. Y el README se parte en dos: uno principal, corto y con capturas, para quien llega al repo; y `README_TECHNICAL.md` con la arquitectura, la instalación manual, los endpoints, la configuración y las decisiones con sus medidas. De 852 líneas a 234 + 884. |
+| 2026-08-24 | La búsqueda pasa a entender de barrios. Cada anuncio sabe ya en cuál cae —resuelto por geometría, porque el dataset de anuncios no trae `LOCATIONID`: 149.693 de 149.923 localizados en 27 s, y los 230 restantes caen fuera del término municipal, que es una respuesta y no un fallo—. Con eso, un clic en el polígono busca dentro del barrio; el «dónde buscar» pasa de un desplegable de tres opciones a un árbol con buscador que ignora acentos y permite elegir varios; y la tabla de la izquierda se corta por barrio en cuanto hay una ciudad elegida, lo que obligó a cambiar la estrategia de cálculo porque el `GROUP BY` costaba una consulta de mediana por grupo y los grupos pasaron de 3 a 135. |
+| 2026-08-24 | Se incorporan los dos bloques del dataset que no se usaban: los 277 polígonos de barrio y los puntos de interés (centro, 801 bocas de metro y las tres calles principales). La exportación en R los saca a GeoJSON sin dependencias nuevas, corrigiendo por el camino una estación con el signo de la longitud cambiado —a 67 km, en el mar— y unos nombres doblemente codificados que había escrito yo mismo y que la validación no vio. El backend los sirve como ficheros y no como tabla, con los bytes ya serializados (5 ms por petición) y compresión en nivel 4, no en el 9 por defecto, que costaba 64 ms de CPU por petición a cambio de 5 kB. En el mapa son dos capas conmutables, y al arrancar hay pantalla de carga con los cuatro pasos de la primera vista. |
 | 2026-08-24 | Docker verificado por primera vez de punta a punta, con tres arreglos que hacían falta para que funcionara: la base a un volumen (en montaje de Windows va 217× más lento y la API no responde), fuera `--reload` y los montajes de código (190 % de CPU en reposo por sondeo de ficheros) y healthchecks recalibrados (3 s de límite para una sonda de 4,5 s; `localhost` resolviendo a IPv6 donde Vite solo escucha IPv4). Del mapa: Madrid ya no sale partido —a zoom bajo se agrupa por zona, no por rejilla— y clicar un clúster enseña solo los suyos. Y la caché pasa a single-flight tras ver 24 hilos recalculando el mismo agregado y tumbar el servidor. |
 | 2026-08-24 | Filtros nuevos (extras, baños, planta, año, estado, distancia al centro y al metro) promoviendo al esquema normalizado los atributos que cualquier portal reporta, con migración v4 y recarga al 100 % de cobertura; y dos estadísticas nuevas: la curva de €/m² por distancia al centro —que avisa si hay varias ciudades mezcladas— y el impacto de cada extra, con su aviso de que son correlaciones. Encontrado y corregido al probarlo un closure obsoleto que hacía que marcar dos extras seguidos dejara solo el segundo. |
 | 2026-08-24 | Capa de calor por €/m² con conmutador Marcadores/Calor en el mapa (coropleto de celdas en canvas, tramos por cuantiles, respeta los filtros), favoritos en `localStorage` con corazón en tarjeta y detalle, pestaña propia y filtro `ids` para pedirlos en una sola petición, y gráfico de €/m² por habitaciones y por superficie en el panel lateral, que enseña la U que encontró el notebook. Verificado todo en navegador: 0 errores de consola. |

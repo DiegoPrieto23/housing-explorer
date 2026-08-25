@@ -132,6 +132,20 @@ class Listing(BaseModel):
     address: str | None = None
     zone: str | None = Field(default=None, description="District / neighbourhood")
 
+    #: Barrio, resuelto contra los polígonos del dataset. Derivado, no ingerido:
+    #: la fuente no trae ninguna clave de barrio. Ver app/geodata.py.
+    neighbourhood_id: str | None = Field(
+        default=None,
+        description=(
+            "`LOCATIONID` del barrio que contiene el anuncio. Es lo que acepta el "
+            "filtro `barrio`, y no el nombre, porque los nombres se repiten entre "
+            "ciudades. Nulo si el anuncio cae fuera de todos los polígonos"
+        ),
+    )
+    neighbourhood: str | None = Field(
+        default=None, description="Nombre del barrio, para enseñarlo sin cruzar nada"
+    )
+
     distance_to_center_km: float | None = Field(
         default=None, ge=0, description="Distancia en línea recta al centro de la ciudad"
     )

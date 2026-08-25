@@ -25,6 +25,9 @@ COPY scripts ./scripts
 # contenedor. Son 1,4 MB; dejarlo fuera obligaría a montar un volumen más solo
 # para eso, y a que la imagen no fuera autosuficiente.
 COPY models ./models
+# Y los barrios y puntos de interés, por lo mismo: 386 kB de geografía fija que
+# los endpoints /neighbourhoods y /points-of-interest sirven tal cual.
+COPY geo ./geo
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh

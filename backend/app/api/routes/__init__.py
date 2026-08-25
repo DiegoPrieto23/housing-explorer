@@ -1,3 +1,3 @@
-from app.api.routes import health, listings, sources, stats
+from app.api.routes import geography, health, listings, sources, stats
 
-__all__ = ["health", "listings", "sources", "stats"]
+__all__ = ["geography", "health", "listings", "sources", "stats"]

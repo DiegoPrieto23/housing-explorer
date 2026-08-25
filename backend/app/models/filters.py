@@ -74,7 +74,23 @@ class ListingFilters(BaseModel):
         default=None,
         alias="zona",
         min_length=1,
-        description="Ciudad o barrio (coincidencia exacta, sin distinguir mayúsculas)",
+        description="Ciudad (coincidencia exacta, sin distinguir mayúsculas)",
+    )
+    neighbourhoods: list[str] | None = Field(
+        default=None,
+        alias="barrio",
+        max_length=277,
+        description=(
+            "Barrios concretos, repetible: `?barrio=<LOCATIONID>&barrio=<LOCATIONID>`. "
+            "Se piden **cualquiera** de ellos, no todos a la vez — al revés que "
+            "`extras`, porque un piso está en un barrio y no en cinco.\n\n"
+            "Toma el `LOCATIONID` del dataset y no el nombre porque los nombres se "
+            "repiten: hay un «Sant Antoni» en Barcelona y otro en Valencia. Los ids "
+            "y sus nombres vienen en `/listings/facets`, y los polígonos en "
+            "`/neighbourhoods`.\n\n"
+            "El tope de 277 es el número de barrios que hay: pedirlos todos es lo "
+            "mismo que no filtrar, y pedir más es una petición mal formada."
+        ),
     )
     source: str | None = Field(default=None, description="Fuente de datos, p.ej. idealista18")
 

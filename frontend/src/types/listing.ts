@@ -61,6 +61,9 @@ export interface Listing {
   longitude: number | null;
   address: string | null;
   zone: string | null;
+  /** `LOCATIONID` del barrio que lo contiene, o null si cae fuera de todos. */
+  neighbourhood_id: string | null;
+  neighbourhood: string | null;
   ingested_at: string;
 
   bathrooms: number | null;
@@ -109,6 +112,24 @@ export interface FacetValue {
 }
 
 /** A zone plus the box that contains it, so picking a city can fly the map. */
+/**
+ * Un barrio, tal y como lo necesita el selector de la izquierda.
+ *
+ * El identificador es el `LOCATIONID` del dataset y no el nombre porque los
+ * nombres se repiten: hay un «Sant Antoni» en Barcelona y otro en Valencia.
+ */
+export interface NeighbourhoodFacet {
+  id: string;
+  name: string;
+  city: string;
+  count: number;
+  /** Del polígono, no de dónde caigan sus anuncios: es su extensión real. */
+  lat_min: number;
+  lat_max: number;
+  lon_min: number;
+  lon_max: number;
+}
+
 export interface ZoneFacet extends FacetValue {
   lat_min: number | null;
   lat_max: number | null;
@@ -116,6 +137,8 @@ export interface ZoneFacet extends FacetValue {
   lon_max: number | null;
   /** Nombre de la zona cuando la agrupación fue por zona, no por rejilla. */
   zone: string | null;
+  /** Los barrios de esta ciudad, por orden alfabético. */
+  neighbourhoods: NeighbourhoodFacet[];
 }
 
 /** One listing as the map draws it. Not a full `Listing`: see MapData. */
@@ -199,7 +222,10 @@ export interface OverallStats {
 }
 
 export interface ZoneStats {
+  /** Nombre de la ciudad o del barrio, según cómo esté cortada la tabla. */
   zone: string;
+  /** `LOCATIONID` cuando la fila es un barrio; null cuando es una ciudad. */
+  neighbourhood_id: string | null;
   count: number;
   avg_price: number;
   median_price: number | null;
@@ -237,6 +263,8 @@ export interface AmenityImpact {
 export interface Stats {
   overall: OverallStats;
   by_zone: ZoneStats[];
+  /** Si `by_zone` viene cortado por barrio en vez de por ciudad. */
+  by_zone_is_neighbourhood: boolean;
   by_rooms: Bucket[];
   by_size: Bucket[];
   by_distance: Bucket[];
@@ -249,6 +277,41 @@ export interface SourceStatus {
   healthy: boolean;
   listings: number;
 }
+
+/* -------------------------------------------------------------------------
+ * Geografía fija: los barrios y los puntos de interés del dataset.
+ *
+ * Va tipada sobre `GeoJSON.FeatureCollection`, que llega con @types/leaflet,
+ * en vez de con interfaces propias. Así lo que sale de `fetch` es exactamente
+ * lo que `L.geoJSON` acepta, sin conversión ni casts por el camino.
+ * ---------------------------------------------------------------------- */
+
+/** Un barrio del dataset: el LOCATIONID original, su nombre y su ciudad. */
+export interface NeighbourhoodProperties {
+  location_id: string;
+  name: string;
+  city: string;
+}
+
+export type NeighbourhoodCollection = GeoJSON.FeatureCollection<
+  GeoJSON.MultiPolygon,
+  NeighbourhoodProperties
+>;
+
+/** Los tres tipos de punto de interés, cada uno con su forma en el mapa. */
+export type PoiKind = "centro" | "metro" | "calle";
+
+export interface PoiProperties {
+  kind: PoiKind;
+  city: string;
+  /** El metro no lo trae: el dataset da coordenadas, no nombres de estación. */
+  name?: string;
+}
+
+export type PoiCollection = GeoJSON.FeatureCollection<
+  GeoJSON.Point | GeoJSON.LineString,
+  PoiProperties
+>;
 
 /** The key storage deduplicates on, and what React needs for list keys. */
 export function globalId(listing: Listing): string {

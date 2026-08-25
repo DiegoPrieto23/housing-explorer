@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -38,9 +38,16 @@ class PriceBucket(BaseModel):
 
 
 class ZoneStats(BaseModel):
-    """Aggregates for one zone (por ahora la ciudad; ver data/README.md)."""
+    """Aggregates for one zone: a city, or a neighbourhood inside a city."""
 
-    zone: str
+    zone: str = Field(description="Nombre de la ciudad o del barrio, según el corte")
+    neighbourhood_id: str | None = Field(
+        default=None,
+        description=(
+            "`LOCATIONID` cuando la fila es un barrio, para poder filtrar por ella. "
+            "Nulo cuando el corte es por ciudad"
+        ),
+    )
     count: int
     avg_price: float = Field(description="Precio medio en euros")
     median_price: float | None = Field(default=None, description="Mediana en euros")
@@ -164,6 +171,14 @@ class StatsResponse(BaseModel):
 
     overall: OverallStats
     by_zone: list[ZoneStats] = Field(description="Ordenado por número de anuncios, descendente")
+    by_zone_is_neighbourhood: bool = Field(
+        default=False,
+        description=(
+            "Si `by_zone` está cortado por barrio en vez de por ciudad. Ocurre en "
+            "cuanto la búsqueda ya está acotada a una ciudad o a unos barrios, "
+            "porque entonces cortar por ciudad daría una sola fila"
+        ),
+    )
     by_rooms: list[Bucket] = Field(
         default_factory=list,
         description="Precio medio y €/m² por número de habitaciones",
@@ -200,6 +215,23 @@ class FacetValue(BaseModel):
     count: int
 
 
+class NeighbourhoodFacet(BaseModel):
+    """One neighbourhood, as the sidebar picker needs it.
+
+    The bounds are the polygon's, so they are the neighbourhood's real extent
+    and not an estimate from where its listings happen to be.
+    """
+
+    id: str = Field(description="`LOCATIONID` del dataset. Es lo que acepta el filtro `barrio`")
+    name: str
+    city: str
+    count: int = Field(description="Anuncios dentro del polígono, sin filtrar")
+    lat_min: float
+    lat_max: float
+    lon_min: float
+    lon_max: float
+
+
 class ZoneFacet(FacetValue):
     """A zone, plus the box the map should fly to when it is picked.
 
@@ -212,6 +244,16 @@ class ZoneFacet(FacetValue):
     lat_max: float | None = None
     lon_min: float | None = None
     lon_max: float | None = None
+
+    neighbourhoods: list[NeighbourhoodFacet] = Field(
+        default_factory=list,
+        description=(
+            "Los barrios de esta ciudad, **por orden alfabético**, con cuántos "
+            "anuncios tiene cada uno. Anidados dentro de su ciudad porque así es "
+            "como se eligen: primero la ciudad, luego el barrio. Vacío si los "
+            "polígonos no están disponibles"
+        ),
+    )
 
 
 class Facets(BaseModel):
@@ -245,3 +287,33 @@ class Facets(BaseModel):
         default=None, description="Distancia máxima al centro que hay en los datos"
     )
     metro_max_km: float | None = None
+
+
+class GeoFeature(BaseModel):
+    """One GeoJSON feature, as RFC 7946 defines it.
+
+    Declared for the documentation only: `/neighbourhoods` and
+    `/points-of-interest` return bytes read straight off disk, because putting
+    12.101 vertices through Pydantic on every request costs more than reading
+    the file did. Keeping the model here means the OpenAPI page still describes
+    the shape honestly -- see `app.geodata` for the whole argument.
+    """
+
+    type: Literal["Feature"] = "Feature"
+    properties: dict[str, str | None] = Field(
+        description=(
+            "En los barrios: `location_id`, `name`, `city`. En los puntos de "
+            "interés: `kind` (centro / metro / calle), `city` y, salvo en el "
+            "metro, `name`"
+        )
+    )
+    geometry: dict[str, Any] = Field(
+        description="`MultiPolygon`, `Point` o `LineString`, en EPSG:4326 y con [lon, lat]"
+    )
+
+
+class FeatureCollection(BaseModel):
+    """A GeoJSON FeatureCollection: what both geography endpoints return."""
+
+    type: Literal["FeatureCollection"] = "FeatureCollection"
+    features: list[GeoFeature]

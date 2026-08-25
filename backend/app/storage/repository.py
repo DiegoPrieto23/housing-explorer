@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import math
 import sqlite3
+import unicodedata
+from dataclasses import dataclass
 from datetime import datetime
 from itertools import groupby
 from typing import Any
 
+from app import geodata
 from app.models.filters import ListingFilters
 from app.models.listing import (
     AMENITY_COLUMNS,
@@ -26,6 +29,7 @@ _COLUMNS = (
     "global_id, id, source, title, url, operation, property_type, price, "
     "size_m2, rooms, latitude, longitude, address, zone, ingested_at, "
     "expected_price, price_deviation, "
+    "neighbourhood_id, neighbourhood, "
     "bathrooms, floor, year_built, condition, "
     "distance_to_center_km, distance_to_metro_km, "
     "has_lift, has_terrace, has_parking, has_air_conditioning, has_pool, "
@@ -120,6 +124,40 @@ _ORDERINGS = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class _Grouping:
+    """How the per-zone statistics are cut: by city or by neighbourhood.
+
+    Two columns and not one, because for neighbourhoods the grouping key and
+    the label are different things: the key has to be the LOCATIONID, since
+    there is a "Sant Antoni" in Barcelona and another in Valencia and grouping
+    by name would quietly merge them into one row.
+    """
+
+    key: str
+    label: str
+    #: Whether the key is worth sending back, so a click can filter by it.
+    carries_id: bool
+
+
+_BY_CITY = _Grouping(key="zone", label="zone", carries_id=False)
+_BY_NEIGHBOURHOOD = _Grouping(key="neighbourhood_id", label="neighbourhood", carries_id=True)
+
+
+def _sort_key(name: str) -> str:
+    """Alphabetical order a Spanish reader recognises.
+
+    Sorting by code point puts every accented name after Z: "Ávila" would land
+    below "Zamora", and a picker listing 135 neighbourhoods would look broken.
+    Stripping the diacritics before comparing folds "Á" back next to "A", which
+    is what a Spanish index does. It also folds "ñ" into "n" -- strictly wrong,
+    since Spanish puts it after, but a "Nuñez" one line early is invisible next
+    to an "Ávila" thirty lines late.
+    """
+    stripped = unicodedata.normalize("NFKD", name)
+    return "".join(c for c in stripped if not unicodedata.combining(c)).casefold()
+
+
 def build_where(
     filters: ListingFilters | None,
     *extra_clauses: str,
@@ -155,6 +193,19 @@ def build_where(
             # COLLATE NOCASE matches idx_listings_zone, so this stays indexed.
             clauses.append("zone = ? COLLATE NOCASE")
             params.append(filters.zone)
+
+        if filters.neighbourhoods:
+            # OR between neighbourhoods, unlike the AND between amenities: a
+            # flat is in one neighbourhood, so requiring all of them would
+            # always return nothing. `IN` over the partial index on
+            # neighbourhood_id is the most selective clause the API has --
+            # one neighbourhood is a few hundred rows out of 150k.
+            #
+            # Bound parameters one per value rather than a joined string: the
+            # ids arrive from a query string.
+            placeholders = ", ".join(["?"] * len(filters.neighbourhoods))
+            clauses.append(f"neighbourhood_id IN ({placeholders})")
+            params.extend(filters.neighbourhoods)
 
         if filters.price_min is not None:
             clauses.append("price >= ?")
@@ -427,6 +478,14 @@ class ListingRepository:
                 )
             ]
 
+            neighbourhood_counts = {
+                row["neighbourhood_id"]: int(row["count"])
+                for row in connection.execute(
+                    "SELECT neighbourhood_id, COUNT(*) AS count FROM listings"
+                    " WHERE neighbourhood_id IS NOT NULL GROUP BY neighbourhood_id"
+                )
+            }
+
             ranges = connection.execute(
                 "SELECT COUNT(*) AS total,"
                 " MIN(price) AS price_min, MAX(price) AS price_max,"
@@ -439,6 +498,10 @@ class ListingRepository:
                 " MAX(distance_to_metro_km) AS metro_max"
                 " FROM listings"
             ).fetchone()
+
+        by_city = self._neighbourhood_facets(neighbourhood_counts)
+        for zone in zones:
+            zone["neighbourhoods"] = by_city.get(zone["value"], [])
 
         return {
             "total": int(ranges["total"]),
@@ -462,6 +525,58 @@ class ListingRepository:
             "center_max_km": ranges["center_max"],
             "metro_max_km": ranges["metro_max"],
         }
+
+    @staticmethod
+    def _neighbourhood_facets(counts: dict[str, int]) -> dict[str, list[dict[str, Any]]]:
+        """The neighbourhoods of each city, alphabetical, with how many listings.
+
+        The list comes from the **polygons**, not from a GROUP BY, and the
+        difference shows up at the edges: a neighbourhood with no listings still
+        exists, still has a shape on the map and should still be findable in the
+        picker -- greyed out with a zero rather than quietly absent. Today all
+        277 have listings, so nothing distinguishes the two; the day a filter or
+        a new export changes that, the honest one is this.
+
+        The bounds come from the polygon too, which is the neighbourhood's real
+        extent. The robust box that :meth:`_zone_box` computes for a city exists
+        because one stray listing filed under the wrong city would open the map
+        on half of Spain; here there is nothing to be robust against, because
+        the shape is the shape.
+
+        Sorted by name because that is how the sidebar lists them, and because
+        the alternative -- by count -- puts a search for "Sol" behind whichever
+        neighbourhoods happen to be busiest.
+        """
+        try:
+            index = geodata.neighbourhood_index()
+        except geodata.GeoDataUnavailable:
+            # The picker degrades to the cities it already had rather than the
+            # whole endpoint failing: the polygons are a nicety here, not the
+            # data the filter runs on.
+            return {}
+
+        by_city: dict[str, list[dict[str, Any]]] = {}
+        for item in index.all:
+            by_city.setdefault(item.city, []).append(
+                {
+                    "id": item.location_id,
+                    "name": item.name,
+                    "city": item.city,
+                    "count": counts.get(item.location_id, 0),
+                    "lat_min": item.lat_min,
+                    "lat_max": item.lat_max,
+                    "lon_min": item.lon_min,
+                    "lon_max": item.lon_max,
+                }
+            )
+
+        for entries in by_city.values():
+            # Locale-aware enough for Spanish: casefold puts "Ávila" next to
+            # "Avenida" instead of after "Zamora", which is where a raw
+            # code-point sort would send every accented name.
+            entries.sort(key=lambda entry: _sort_key(entry["name"]))
+
+        return by_city
 
     @staticmethod
     def _zone_box(row: sqlite3.Row) -> dict[str, float | None]:
@@ -530,6 +645,59 @@ class ListingRepository:
 
         stats_cache.bump()
         return written
+
+    def update_neighbourhoods(self, assignments: list[tuple[str, str | None, str | None]]) -> int:
+        """Write ``(global_id, neighbourhood_id, neighbourhood)`` in bulk.
+
+        NULL is written as readily as a name: "this listing is in none of the
+        polygons" is an answer, and leaving the old value in place would keep a
+        stale one from a previous run after the geography was re-exported.
+        """
+        if not assignments:
+            return 0
+
+        with self.database.session() as connection:
+            cursor = connection.executemany(
+                "UPDATE listings SET neighbourhood_id = ?, neighbourhood = ?"
+                " WHERE global_id = ?",
+                [(nid, name, key) for key, nid, name in assignments],
+            )
+            written = cursor.rowcount if cursor.rowcount != -1 else len(assignments)
+
+        stats_cache.bump()
+        return written
+
+    def neighbourhood_counts(self) -> dict[str, int]:
+        """How many listings sit in each neighbourhood, keyed by LOCATIONID.
+
+        Feeds the sidebar picker. Kept separate from :meth:`facets` so the route
+        can merge it with the polygons, which are the authority on *which*
+        neighbourhoods exist -- one with no listings should still be listed and
+        searchable, greyed out, rather than quietly vanish.
+        """
+        with self.database.session() as connection:
+            return {
+                row["neighbourhood_id"]: int(row["count"])
+                for row in connection.execute(
+                    "SELECT neighbourhood_id, COUNT(*) AS count FROM listings"
+                    " WHERE neighbourhood_id IS NOT NULL GROUP BY neighbourhood_id"
+                )
+            }
+
+    def neighbourhood_coverage(self) -> dict[str, int]:
+        """How much of the database has been located. For the CLI and the tests."""
+        with self.database.session() as connection:
+            row = connection.execute(
+                "SELECT COUNT(*) AS total,"
+                " SUM(neighbourhood_id IS NOT NULL) AS located,"
+                " COUNT(DISTINCT neighbourhood_id) AS neighbourhoods"
+                " FROM listings"
+            ).fetchone()
+        return {
+            "total": int(row["total"]),
+            "located": int(row["located"] or 0),
+            "neighbourhoods": int(row["neighbourhoods"] or 0),
+        }
 
     def clear_scores(self, source: str | None = None) -> int:
         """Forget every estimate, so a re-score starts from a clean slate."""
@@ -954,7 +1122,11 @@ class ListingRepository:
         return stats
 
     def zone_stats(
-        self, filters: ListingFilters | None = None, *, total: int | None = None
+        self,
+        filters: ListingFilters | None = None,
+        *,
+        total: int | None = None,
+        by_neighbourhood: bool = False,
     ) -> list[dict[str, Any]]:
         """Per-zone aggregates, busiest zone first. Rows without a zone are skipped.
 
@@ -968,26 +1140,62 @@ class ListingRepository:
 
         Pass ``total`` when the caller already knows the row count, to save a
         COUNT(*).
+
+        ``by_neighbourhood`` swaps the grouping column. With a city already
+        chosen, grouping by city is one row saying what the header already says;
+        the same query grouped by neighbourhood is the 135 rows that answer
+        "where in Madrid is it cheap?". The caller decides, because the caller
+        is what knows whether the filter has narrowed to a city yet.
         """
         if total is None:
             total = self.count(filters)
 
+        grouping = _BY_NEIGHBOURHOOD if by_neighbourhood else _BY_CITY
+
         def compute() -> list[dict[str, Any]]:
-            if total <= PERCENTILE_SCAN_THRESHOLD:
-                return self._zone_stats_scanned(filters)
-            return self._zone_stats_grouped(filters)
+            # By neighbourhood, always the scan, whatever the row count. The
+            # threshold above was tuned when this only ever cut three ways: the
+            # GROUP BY costs one extra median query *per group*, and three of
+            # those are nothing. Madrid has 135 neighbourhoods, so the same
+            # strategy means 135 re-runs of the filter, and the cost stops
+            # tracking the number of rows and starts tracking the number of
+            # groups -- a number that only grows as more cities are ingested.
+            #
+            # The scan reads the matching rows once and folds them, which is
+            # what a per-neighbourhood breakdown has to do anyway. Measured on
+            # the 135 neighbourhoods of Madrid:
+            #
+            #     Madrid + bounding box   scan 1.154 ms   group by 1.352 ms
+            #     Madrid + drawn area     scan   328 ms   group by   525 ms
+            #     Madrid, no other filter scan   724 ms   group by   591 ms
+            #
+            # It loses the last one by 133 ms and wins the two that hurt. And
+            # since `by_neighbourhood` is only ever true once the search is
+            # narrowed to a city, the scan never reads more than one city.
+            if grouping.carries_id or total <= PERCENTILE_SCAN_THRESHOLD:
+                return self._zone_stats_scanned(filters, grouping)
+            return self._zone_stats_grouped(filters, grouping)
 
-        return stats_cache.get_or_compute(cache_key("zones", filters), compute)
+        return stats_cache.get_or_compute(
+            cache_key("zones", filters, group=grouping.key), compute
+        )
 
-    def _zone_stats_scanned(self, filters: ListingFilters | None) -> list[dict[str, Any]]:
-        """One ordered read, folded per zone in Python."""
-        where, params = build_where(filters, "zone IS NOT NULL")
-        query = "SELECT zone, price, size_m2 FROM listings" + where + " ORDER BY zone, price"
+    def _zone_stats_scanned(
+        self, filters: ListingFilters | None, grouping: _Grouping
+    ) -> list[dict[str, Any]]:
+        """One ordered read, folded per group in Python."""
+        where, params = build_where(filters, f"{grouping.key} IS NOT NULL")
+        query = (
+            f"SELECT {grouping.key} AS gkey, {grouping.label} AS glabel, price, size_m2"
+            " FROM listings" + where + f" ORDER BY {grouping.key}, price"
+        )
         with self.database.session() as connection:
             rows = connection.execute(query, params).fetchall()
 
         results: list[dict[str, Any]] = []
-        for zone, group in groupby(rows, key=lambda row: row["zone"]):
+        for _, raw_group in groupby(rows, key=lambda row: row["gkey"]):
+            group = list(raw_group)
+            zone = group[0]["glabel"]
             prices: list[float] = []
             per_m2: list[float] = []
             for row in group:
@@ -999,6 +1207,7 @@ class ListingRepository:
             results.append(
                 {
                     "zone": zone,
+                    "neighbourhood_id": group[0]["gkey"] if grouping.carries_id else None,
                     "count": count,
                     # prices arrives sorted, so min/max/median are positional.
                     "avg_price": sum(prices) / count,
@@ -1012,31 +1221,36 @@ class ListingRepository:
         results.sort(key=lambda entry: (-entry["count"], entry["zone"]))
         return results
 
-    def _zone_stats_grouped(self, filters: ListingFilters | None) -> list[dict[str, Any]]:
-        """SQL GROUP BY plus one median query per zone."""
-        where, params = build_where(filters, "zone IS NOT NULL")
+    def _zone_stats_grouped(
+        self, filters: ListingFilters | None, grouping: _Grouping
+    ) -> list[dict[str, Any]]:
+        """SQL GROUP BY plus one median query per group."""
+        where, params = build_where(filters, f"{grouping.key} IS NOT NULL")
         query = (
-            "SELECT zone, COUNT(*) AS count,"
+            f"SELECT {grouping.key} AS gkey, {grouping.label} AS zone, COUNT(*) AS count,"
             " AVG(price) AS avg_price,"
             " MIN(price) AS min_price,"
             " MAX(price) AS max_price,"
             " AVG(CASE WHEN size_m2 > 0 THEN price / size_m2 END) AS avg_price_per_m2"
-            " FROM listings" + where + " GROUP BY zone ORDER BY COUNT(*) DESC, zone"
+            " FROM listings" + where + f" GROUP BY {grouping.key}"
+            " ORDER BY COUNT(*) DESC, zone"
         )
         # Binary comparison, not COLLATE NOCASE: the value comes straight from
         # the GROUP BY above, so it matches exactly what is stored -- and it
-        # lets the (zone, price, size_m2) index supply the ORDER BY for free,
-        # instead of falling back to idx_listings_zone plus a temp b-tree.
-        zone_where, zone_params = build_where(filters, "zone = ?")
+        # lets the (key, price, size_m2) index supply the ORDER BY for free,
+        # instead of falling back to a narrow index plus a temp b-tree.
+        row_where, row_params = build_where(filters, f"{grouping.key} = ?")
 
         results: list[dict[str, Any]] = []
         with self.database.session() as connection:
             for row in connection.execute(query, params).fetchall():
                 entry = dict(row)
+                key = entry.pop("gkey")
+                entry["neighbourhood_id"] = key if grouping.carries_id else None
                 entry["median_price"] = self._percentiles(
                     connection,
-                    zone_where,
-                    [*zone_params, entry["zone"]],
+                    row_where,
+                    [*row_params, key],
                     int(entry["count"]),
                     (0.50,),
                 )[0.50]
@@ -1191,6 +1405,8 @@ class ListingRepository:
             ingested_at=datetime.fromisoformat(row["ingested_at"]),
             expected_price=row["expected_price"],
             price_deviation=row["price_deviation"],
+            neighbourhood_id=row["neighbourhood_id"],
+            neighbourhood=row["neighbourhood"],
             bathrooms=row["bathrooms"],
             floor=row["floor"],
             year_built=row["year_built"],

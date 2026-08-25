@@ -4,6 +4,8 @@ import type {
   Listing,
   ListingPage,
   MapData,
+  NeighbourhoodCollection,
+  PoiCollection,
   SourceStatus,
   Stats,
 } from "../types/listing";
@@ -135,4 +137,21 @@ export function fetchListing(id: string, signal?: AbortSignal): Promise<Listing>
 
 export function fetchSources(signal?: AbortSignal): Promise<SourceStatus[]> {
   return request<SourceStatus[]>("/sources", signal);
+}
+
+/**
+ * Los polígonos de barrio, en GeoJSON, tal cual los quiere `L.geoJSON`.
+ *
+ * Sin filtros y sin paginar: son 277 barrios que no cambian nunca, así que se
+ * piden una vez al arrancar y ya. El servidor los manda comprimidos (279 kB
+ * pasan a 67) y con `Cache-Control`, de modo que una recarga no vuelve a
+ * traerlos.
+ */
+export function fetchNeighbourhoods(signal?: AbortSignal): Promise<NeighbourhoodCollection> {
+  return request<NeighbourhoodCollection>("/neighbourhoods", signal);
+}
+
+/** El centro de cada ciudad, sus bocas de metro y su calle principal. */
+export function fetchPointsOfInterest(signal?: AbortSignal): Promise<PoiCollection> {
+  return request<PoiCollection>("/points-of-interest", signal);
 }

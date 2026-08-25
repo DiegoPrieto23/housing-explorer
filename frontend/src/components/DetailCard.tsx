@@ -126,7 +126,10 @@ export default function DetailCard({
               </div>
             ) : null}
 
-            <p className="detail__zone muted">{data.address ?? data.zone ?? "Sin zona"}</p>
+            <p className="detail__zone muted">
+              {data.address ?? data.neighbourhood ?? data.zone ?? "Sin zona"}
+              {data.neighbourhood && data.zone ? `, ${data.zone}` : ""}
+            </p>
 
             {data.url ? (
               <a className="button" href={data.url} target="_blank" rel="noreferrer">

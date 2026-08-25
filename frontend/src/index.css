@@ -1294,3 +1294,499 @@ h3 {
     max-height: 55vh;
   }
 }
+
+/* -- capas de contexto: barrios y puntos de interés ------------------------ */
+
+/* Debajo del conmutador marcadores/calor, que ocupa la esquina superior
+   izquierda. Apilado en vertical porque las etiquetas son largas y en
+   horizontal empujarían el control fuera del mapa en una ventana estrecha. */
+.map-overlays {
+  position: absolute;
+  top: 3.1rem;
+  left: 0.75rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: flex-start;
+}
+
+.map-overlays button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  box-shadow: var(--shadow);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.map-overlays button:hover {
+  color: var(--fg);
+}
+
+.map-overlays button.is-active {
+  color: var(--fg);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+/* Apagada, la muestra de color se ve en gris: el botón dice lo mismo con el
+   texto y con la muestra, y no hace falta leerlo para saber si está puesta. */
+.map-overlays__swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background: var(--muted);
+  opacity: 0.45;
+}
+
+.map-overlays button.is-active .map-overlays__swatch {
+  opacity: 1;
+}
+
+.map-overlays button.is-active .map-overlays__swatch--zone {
+  background: transparent;
+  border: 1.5px solid #1a56db;
+}
+
+.map-overlays button.is-active .map-overlays__swatch--poi {
+  background: #d1332e;
+  border-radius: 50%;
+}
+
+/* La diana del centro de la ciudad es un divIcon: sin la caja blanca que
+   Leaflet le pone por defecto, igual que los pines. */
+.poi {
+  background: none;
+  border: none;
+}
+
+.poi svg {
+  display: block;
+}
+
+.legend--poi {
+  left: auto;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  max-width: 40%;
+}
+
+.legend__swatch--centre {
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid #b45309;
+}
+
+.legend__swatch--metro {
+  border-radius: 50%;
+  background: #d1332e;
+  border: 1.5px solid #ffffff;
+}
+
+.legend__swatch--street {
+  height: 0.25rem;
+  border-radius: 2px;
+  background: #0369a1;
+}
+
+/* -- etiquetas del mapa ---------------------------------------------------- */
+
+/* Las de Leaflet vienen con fondo blanco fijo y no responden al tema. */
+.leaflet-tooltip.tip {
+  padding: 0.28rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.leaflet-tooltip.tip::before {
+  display: none;
+}
+
+.tip__city {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 400;
+}
+
+/* -- pantalla de carga ----------------------------------------------------- */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  transition: opacity 0.4s ease;
+}
+
+.splash--done {
+  opacity: 0;
+  /* Sin esto, la capa invisible seguiría comiéndose los clics durante el
+     desvanecido, y el primer clic en el mapa se perdería sin explicación. */
+  pointer-events: none;
+}
+
+.splash__panel {
+  width: min(23rem, calc(100% - 3rem));
+}
+
+.splash__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 1.4rem;
+}
+
+.splash__brand h1 {
+  font-size: 1.15rem;
+}
+
+.splash__brand p {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.splash__spinner {
+  width: 1.9rem;
+  height: 1.9rem;
+  flex: 0 0 auto;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: splash-spin 0.9s linear infinite;
+}
+
+@keyframes splash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.splash__steps {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.splash__step {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.splash__step--done {
+  color: var(--fg);
+}
+
+.splash__step--error {
+  color: var(--error);
+}
+
+/* Un hueco del tamaño de la marca, siempre, para que la lista no se desplace
+   lateralmente conforme van llegando las cosas. */
+.splash__mark {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.splash__step--done .splash__mark {
+  border-color: var(--ok);
+  background: var(--ok);
+  color: #ffffff;
+}
+
+.splash__step--error .splash__mark {
+  border-color: var(--error);
+  background: var(--error);
+  color: #ffffff;
+}
+
+.splash__bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.splash__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.35s ease;
+}
+
+/* Girar una rueda a 66 rpm delante de alguien que ha pedido que no se mueva
+   nada es exactamente lo que la preferencia dice que no hagas. La barra sigue
+   contando el progreso, que es la información. */
+@media (prefers-reduced-motion: reduce) {
+  .splash__spinner {
+    animation: none;
+    border-top-color: var(--border);
+  }
+
+  .splash,
+  .splash__fill {
+    transition: none;
+  }
+}
+
+/* -- selector de dónde buscar --------------------------------------------- */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.picker__search {
+  position: relative;
+}
+
+.picker__search input {
+  width: 100%;
+  padding-right: 1.8rem;
+}
+
+/* La cruz nativa de type=search no aparece en todos los navegadores y no se
+   puede estilar en ninguno; esta sí, y además queda donde se la espera. */
+.picker__search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.picker__clear {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+  cursor: pointer;
+}
+
+.picker__clear:hover {
+  color: var(--fg);
+}
+
+.picker__empty {
+  margin: 0;
+}
+
+.picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.4rem 0.15rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.chip__x {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.chip:hover .chip__x {
+  color: var(--error);
+}
+
+.chip--clear {
+  border-color: var(--border);
+  background: var(--surface-alt);
+  color: var(--muted);
+}
+
+/* Alto fijo y desplazamiento propio: con 277 barrios, una lista que crece
+   empuja el resto de los filtros fuera de la pantalla. Ocho filas es lo que
+   deja ver que hay más sin comerse el panel. */
+.picker__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 15rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.picker__city {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.picker__city.is-active {
+  background: var(--accent-soft);
+}
+
+.picker__caret {
+  flex: 0 0 auto;
+  width: 1.5rem;
+  padding: 0.35rem 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.picker__row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem 0.35rem 0;
+  border: none;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker__row--all {
+  padding-left: 0.6rem;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+}
+
+.picker__row--all.is-active {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.picker__row:hover {
+  color: var(--accent);
+}
+
+.picker__count {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cuántos barrios de esta ciudad van marcados, para que plegarla no esconda
+   que hay un filtro puesto dentro. */
+.picker__badge {
+  flex: 0 0 auto;
+  margin-right: 0.45rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.picker__children {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface-alt);
+}
+
+.picker__leaf {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.5rem 0.22rem 1.55rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.picker__leaf:hover {
+  background: var(--accent-soft);
+}
+
+.picker__leaf.is-active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.picker__leaf input {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.picker__leaf .picker__name {
+  flex: 1;
+}
+
+/* Un barrio sin anuncios sigue existiendo y sigue buscándose; apagarlo dice
+   que no va a devolver nada sin llegar a esconderlo. */
+.picker__leaf.is-empty {
+  color: var(--muted);
+}
+
+/* -- tabla por zona, cuando son barrios ----------------------------------- */
+
+.zones__scroll {
+  max-height: 13rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* La cabecera se queda visible al desplazarse: con 135 filas, saber cuál
+   columna es "€/m²" no debería exigir volver arriba. */
+.zones__scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}

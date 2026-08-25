@@ -4,12 +4,16 @@ import { activeFilterCount, EMPTY_FILTERS, type Filters } from "../filters";
 import { count, shortEuros } from "../format";
 import type { Amenity, Condition, Facets, Operation, PropertyType } from "../types/listing";
 import { AMENITY_LABELS, CONDITION_LABELS } from "../types/listing";
+import ZonePicker from "./ZonePicker";
 
 interface FilterPanelProps {
   filters: Filters;
   onChange: (filters: Filters | ((previous: Filters) => Filters)) => void;
   /** Zones are separate: picking one also flies the map to that city. */
   onZoneChange: (zone: string | null) => void;
+  /** Igual con los barrios: marcar uno mueve el mapa y enciende su capa. */
+  onToggleNeighbourhood: (id: string) => void;
+  onClearNeighbourhoods: () => void;
   onClearPolygon: () => void;
   facets: Facets | null;
   /** Anuncios que cumplen los filtros actuales, o null mientras se cuenta. */
@@ -51,6 +55,8 @@ export default function FilterPanel({
   filters,
   onChange,
   onZoneChange,
+  onToggleNeighbourhood,
+  onClearNeighbourhoods,
   onClearPolygon,
   facets,
   total,
@@ -131,19 +137,25 @@ export default function FilterPanel({
       </fieldset>
 
       <fieldset className="field">
-        <legend>Dónde buscar</legend>
-        <select
-          value={filters.zone ?? ""}
-          onChange={(event) => onZoneChange(event.target.value || null)}
-          aria-label="Ciudad"
-        >
-          <option value="">Toda España</option>
-          {(facets?.zones ?? []).map((zone) => (
-            <option key={zone.value} value={zone.value}>
-              {zone.value} ({count(zone.count)})
-            </option>
-          ))}
-        </select>
+        <legend>
+          Dónde buscar
+          {filters.neighbourhoods.length > 0 ? (
+            <span className="muted">
+              {" · "}
+              {filters.neighbourhoods.length}
+              {filters.neighbourhoods.length === 1 ? " barrio" : " barrios"}
+            </span>
+          ) : null}
+        </legend>
+
+        <ZonePicker
+          zones={facets?.zones ?? []}
+          city={filters.zone}
+          selected={filters.neighbourhoods}
+          onCityChange={onZoneChange}
+          onToggleNeighbourhood={onToggleNeighbourhood}
+          onClearNeighbourhoods={onClearNeighbourhoods}
+        />
 
         {filters.polygon ? (
           <p className="drawn">
