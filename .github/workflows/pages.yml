@@ -1,0 +1,81 @@
+# Publica el visor en GitHub Pages.
+#
+# Pages sirve ficheros y nada más, así que lo que se despliega es la variante
+# estática del frontend: la que resuelve los filtros dentro del navegador contra
+# el paquete de datos, sin FastAPI detrás. Ver `frontend/src/api/index.ts`.
+#
+# El paquete de datos **no** se compila aquí. Sale de `data/housing.db`, que no
+# está en git y necesita R, el dataset original y dos scripts de ingesta para
+# reconstruirse; viene ya compilado en `frontend/public/data/`, y se regenera a
+# mano con `python scripts/build_static_data.py` cuando los datos cambian.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    # Solo cuando cambia lo que se publica. Retocar el README no tiene por qué
+    # volver a desplegar la web.
+    paths:
+      - "frontend/**"
+      - ".github/workflows/pages.yml"
+  # Para poder relanzarlo desde la pestaña Actions sin tener que hacer un commit.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  # Lo pide `deploy-pages`: el despliegue se autentica con OIDC, no con un token
+  # guardado.
+  id-token: write
+
+# Un despliegue a la vez, y sin cancelar el que esté en marcha: cancelar a mitad
+# deja el sitio publicado en un estado que nadie ha pedido.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Antes de compilar, no después: el motor del navegador es un puerto del
+      # repositorio de Python, y esto comprueba que sigue dando los mismos
+      # números que SQL sobre el paquete que se va a publicar. Si se desvía, el
+      # despliegue no llega a salir.
+      - name: Comprobar el motor contra SQL
+        run: npm run verify:static
+
+      - name: Compilar
+        run: npm run build:static
+        env:
+          # El nombre del repositorio, no uno escrito a mano: un fork que se
+          # llame de otra forma se publica igual de bien.
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

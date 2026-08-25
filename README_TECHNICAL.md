@@ -111,7 +111,8 @@ housing-explorer/
 ├── start.ps1                  # arranque de un comando (Windows)
 ├── start.sh                   # arranque de un comando (macOS / Linux)
 ├── scripts/
-│   └── export_idealista18.R   # .rda -> CSV + GeoJSON, base R, cero dependencias
+│   ├── export_idealista18.R   # .rda -> CSV + GeoJSON, base R, cero dependencias
+│   └── build_static_data.py   # SQLite -> paquete binario para la web publicada
 ├── backend/
 │   ├── geo/                   # barrios y puntos de interés, en GeoJSON (versionados)
 │   ├── models/                # el modelo de precio exportado (versionado)
@@ -133,8 +134,13 @@ housing-explorer/
 │   ├── tests/
 │   └── pyproject.toml
 ├── frontend/                  # React + Vite + TypeScript + Leaflet
+│   ├── public/data/           # el paquete compilado que sirve GitHub Pages (versionado)
+│   ├── tools/verify-engine.ts # comprueba el motor del navegador contra SQL
 │   └── src/
+│       ├── api/index.ts       # elige el transporte: HTTP o motor en el navegador
 │       ├── api/client.ts      # cliente HTTP tipado
+│       ├── api/types.ts       # el contrato que cumplen los dos transportes
+│       ├── api/static/        # el motor sin servidor: paquete, worker y consultas
 │       ├── filters.ts         # estado de filtros -> query string
 │       ├── format.ts          # euros, m2, etiquetas
 │       ├── placeholder.ts     # portadas SVG deterministas
@@ -142,6 +148,7 @@ housing-explorer/
 │       ├── components/        # FilterPanel, ListView, MapView, StatsPanel, LoadingScreen…
 │       └── types/listing.ts   # espejo de models/
 ├── data/                      # datasets locales (ver data/README.md)
+├── .github/workflows/pages.yml # compila y publica la variante estática
 ├── docker-compose.yml         # opcional
 └── .env.example
 ```
@@ -315,6 +322,10 @@ Detalles del dataset, el mapeo campo a campo y las alternativas de exportación
 | `pytest` | tests (desde `backend/`) |
 | `ruff check . && ruff format .` | lint y formato |
 | `npm run lint` | comprobación de tipos del frontend |
+| `python scripts/build_static_data.py` | compila SQLite al paquete que consume la web publicada |
+| `npm run verify:static` | comprueba que el motor del navegador da los mismos números que SQL |
+| `npm run build:static` | compila la web sin servidor (`frontend/dist`) |
+| `npm run preview:static` | la sirve en local, tal cual se publicará |
 
 ## Configuración
 
@@ -347,6 +358,10 @@ Solo dentro del contenedor:
 | --- | --- | --- |
 | `VITE_API_TARGET` | `http://localhost:8000` | A dónde reenvía `/api` el proxy de Vite. Dentro de compose es `http://backend:8000`, el nombre del servicio |
 | `VITE_API_BASE_URL` | vacío | Solo si el navegador tiene que llamar a la API en otro origen, sin pasar por el proxy. Vacío significa mismo origen, y entonces CORS ni interviene |
+| `VITE_BASE_PATH` | `/` (`/housing-explorer/` en modo `static`) | Bajo qué ruta se sirve la web. En GitHub Pages un proyecto cuelga de `/<repo>/`, y el workflow lo rellena con el nombre real del repositorio |
+
+`VITE_DATA_MODE` no se pone a mano: lo fija `vite.config.ts` a partir del modo
+de compilación (`vite build` -> `api`, `vite build --mode static` -> `static`).
 
 Las de Vite se leen **al construir**, no al arrancar: cambiarlas obliga a
 reconstruir la imagen del frontend.
@@ -860,6 +875,160 @@ inventarla. Todavía no hay endpoint que lo exponga; ese es el siguiente paso.
 > El modelo estima **precios de oferta de 2018**, y las coordenadas y los precios
 > del dataset llevan ruido añadido por sus editores. Sirve para estudiar el
 > mercado, no para tasar una dirección concreta.
+
+## La versión publicada: el mismo visor, sin servidor
+
+El visor está en [GitHub Pages](https://diegoprieto23.github.io/housing-explorer/),
+que sirve ficheros estáticos y nada más. No hay FastAPI, no hay SQLite, no hay
+proceso al que preguntar — y aun así filtra, agrega y saca percentiles sobre los
+149.923 anuncios.
+
+La razón por la que se puede es que **el conjunto de datos es inmutable**:
+idealista18 es una foto de 2018. Un servidor no aporta nada que el navegador no
+pueda hacer solo, salvo la molestia de mantenerlo vivo.
+
+### El paquete de datos
+
+`scripts/build_static_data.py` lee `data/housing.db` y escribe un binario
+columnar en `frontend/public/data/listings.bin.gz`:
+
+```
+magic   'HEXP'            4 bytes
+header  uint32 longitud + JSON UTF-8 de esa longitud
+datos   los bloques de columna, uno detrás de otro
+```
+
+Columnar y no una lista de objetos JSON, y la diferencia no es estética: los
+mismos anuncios son ~44 MB en JSON y 8,4 MB aquí (4,1 comprimidos), y sobre todo
+llegan como `TypedArray`, así que un filtro es un bucle sobre memoria contigua en
+vez de 149.923 accesos a propiedades de objetos dispersos por el montón. Es la
+diferencia entre que el panel responda mientras se arrastra un deslizador y que
+no.
+
+El JSON de cabecera declara cada columna con su tipo, su desplazamiento y su
+longitud, más los vocabularios —ciudades, tipos, barrios— contra los que las
+columnas guardan índices. El lector de TypeScript monta las vistas leyendo esa
+declaración, así que **no hay una tabla de offsets duplicada** que mantener en
+sincronía a mano; para que las vistas puedan crearse sin copiar, cabecera y
+bloques van alineados a 8 bytes.
+
+Tres decisiones que hacen que quepa:
+
+- **Lo derivable no se guarda.** El título («Piso de 1 hab. y 47 m2 en Madrid»)
+  se compone de cuatro columnas que ya están: son 5 MB que no viajan. La
+  desviación sobre el precio estimado es exactamente
+  `100 · (precio − estimado) / estimado`, así que se calcula al cargar.
+- **Los identificadores son `A` + dígitos**, y solo viajan los dígitos. Deja el
+  bloque en dígitos puros, que es lo que gzip comprime a la mitad.
+- **Cada columna es del ancho que necesita.** Los extras son nueve bits en un
+  `uint16`, la planta un `int8`, el año un `uint16`.
+
+Es una compresión **con pérdida**, y conviene saber dónde: las coordenadas van
+en millonésimas de grado (~11 cm), las distancias en centésimas de kilómetro
+(10 m) y el precio estimado en céntimos. Nada de eso se nota en pantalla, pero
+todo mueve a algún anuncio al otro lado de un filtro que corte justo por ahí — de
+ahí que la precisión del estimado sea al céntimo y no a la décima de punto: con
+la desviación redondeada a décimas, 41 de los 6.227 chollos cruzaban la línea del
+−25 % al recompilar.
+
+### El motor
+
+`frontend/src/api/static/` tiene cuatro piezas: `payload.ts` descarga y decodifica,
+`dataset.ts` pone nombres y resuelve los nulos, `query.ts` es el motor de consulta
+y `worker.ts` lo mete en un *web worker*.
+
+En un worker porque algunas consultas no son baratas: ordenar 149.923 precios para
+sacar cinco percentiles, o agregar el conjunto entero en celdas, son ~28 ms — poco
+para una petición y demasiado para una animación de Leaflet. Fuera del hilo
+principal ese coste no puede tocar el mapa.
+
+`query.ts` es un **puerto** de `backend/app/storage/repository.py`, no una segunda
+implementación, y respeta hasta las convenciones que en SQL salen gratis:
+
+| En SQL | En el motor |
+| --- | --- |
+| `NULL` falla toda comparación | Centinelas descartados a mano en cada filtro; la desviación usa `NaN`, que se comporta igual |
+| `AND` entre extras, `IN` entre barrios | Una máscara de bits y un `AND`; una tabla de barrios y un `OR` |
+| `ORDER BY … , global_id` | Desempate por posición de fila: total y estable, que es lo que la paginación necesita |
+| Mediana por rango más cercano | `sorted[ceil(n·q) − 1]` |
+| Caja robusta a tres sigmas | Lo mismo, con sumas de cuadrados por celda |
+
+### Cómo se comprueba que dicen lo mismo
+
+Un puerto puede desviarse en silencio. Un `>=` donde iba un `>`, una media de
+ratios que se convierte en un ratio de medias: nada de eso rompe nada, solo hace
+que la web publicada enseñe números distintos de los de la API.
+
+Así que `build_static_data.py` calcula **en SQL** los agregados de nueve consultas
+de referencia —elegidas para tocar las esquinas: nulos, el `AND` de los extras
+contra el `OR` de los barrios, el umbral de chollo, el corte por barrio— y los
+deja en `frontend/tools/checks.json`. `npm run verify:static` vuelve a hacer esas
+preguntas con el motor de TypeScript y compara.
+
+El oráculo consulta una vista que redondea igual que el códec. Sin eso compararía
+dos cosas a la vez —si el puerto filtra bien y si el formato pierde precisión— y
+fallaría por lo segundo dejando lo primero sin comprobar.
+
+```
+$ npm run verify:static
+  todo: 149.923 anuncios, mediana 255.000 €
+  una ciudad: 75.804 anuncios, mediana 256.000 €
+  solo chollos: 6227 anuncios, mediana 131.000 €
+  …
+  Todo cuadra.
+```
+
+El workflow lo ejecuta **antes** de compilar: si se desvía, no llega a desplegarse.
+
+### Las dos compilaciones
+
+`src/api/index.ts` elige el transporte a partir de `VITE_DATA_MODE`, que
+`vite.config.ts` fija según el modo de compilación. Los dos cumplen el mismo
+`DataClient` (`src/api/types.ts`), así que ni `App.tsx` ni los componentes saben
+cuál tienen enchufado.
+
+| | `vite build` | `vite build --mode static` |
+| --- | --- | --- |
+| Transporte | `fetch` a FastAPI | Mensajes a un worker |
+| Dónde se filtra | SQL sobre índices de SQLite | Bucles sobre `TypedArray` |
+| Primera carga | Inmediata | 4,1 MB, una vez |
+| Cada filtro | Una petición HTTP | Nada de red |
+
+El paquete compilado **se versiona en git**. `data/housing.db` no está en el
+repositorio —hacen falta R, el dataset original y dos scripts de ingesta para
+reconstruirla—, así que el workflow no podría regenerarlo. Cuando los datos
+cambien:
+
+```bash
+python scripts/build_static_data.py
+cd frontend && npm run verify:static
+```
+
+y se commitea el resultado.
+
+### El despliegue
+
+`.github/workflows/pages.yml`, con `upload-pages-artifact` + `deploy-pages`: sin
+rama `gh-pages` y sin token guardado, el despliegue se autentica con OIDC. Se
+dispara al tocar `frontend/**` — retocar el README no tiene por qué volver a
+publicar la web— y también a mano desde la pestaña *Actions*.
+
+El `base` sale del nombre del repositorio (`VITE_BASE_PATH`), no de una constante
+escrita a mano, así que un fork que se llame de otra forma se publica igual de
+bien.
+
+### Lo que la versión publicada no hace
+
+- **No trae backend**: ni `/docs`, ni ingesta, ni `/health`. Para eso hay que
+  levantarlo.
+- **No se actualiza sola**: los datos son los que se compilaron.
+- **Pide un navegador reciente**: usa `DecompressionStream` y *módulos* en
+  workers, o sea Chrome 80+, Firefox 114+, Safari 16.4+.
+- **Los favoritos siguen siendo del navegador**, con la misma clave `fuente:id`
+  que la versión con API — los identificadores del dataset sobreviven intactos al
+  empaquetado, y `verify:static` lo comprueba.
+
+---
 
 ## Datos
 

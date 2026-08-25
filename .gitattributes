@@ -4,3 +4,10 @@
 *.jpg binary
 *.ico binary
 *.db binary
+
+# El paquete de datos de la web publicada. Explícito y no por heurística: con
+# `text=auto` git decide si un fichero es texto mirándolo, y el día que un
+# volcado binario le parezca texto le cambiaría los saltos de línea y lo
+# corrompería sin decir nada.
+*.gz binary
+*.bin binary

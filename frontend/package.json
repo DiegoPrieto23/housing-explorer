@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:static": "tsc -b && vite build --mode static",
+    "preview:static": "vite preview --mode static",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "verify:static": "esbuild tools/verify-engine.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/verify-engine.mjs --log-level=warning && node node_modules/.cache/verify-engine.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -22,6 +25,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "esbuild": "^0.21.5",
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
   }

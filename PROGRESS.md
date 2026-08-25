@@ -8,7 +8,7 @@ el resto del sistema.
 > cada tarea o sesión de trabajo, para que el estado no dependa de recordar
 > conversaciones anteriores.
 
-**Última auditoría:** 2026-08-24 · hecha leyendo el código, no las notas.
+**Última auditoría:** 2026-08-25 · hecha leyendo el código, no las notas.
 
 | Comprobación | Resultado |
 | --- | --- |
@@ -16,6 +16,9 @@ el resto del sistema.
 | Tests del frontend | **Ninguno**: no hay runner configurado |
 | Typecheck del frontend (`tsc --noEmit`) | Sin errores |
 | Build de producción (`vite build`) | 385 kB, 118 kB comprimido |
+| Build sin servidor (`vite build --mode static`) | 387 kB + un worker de 17 kB, más 4,1 MB de datos |
+| Motor del navegador contra SQL (`npm run verify:static`) | 9 consultas de referencia, todas cuadran |
+| Publicado | <https://diegoprieto23.github.io/housing-explorer/>, por GitHub Actions |
 | Notebook (`nbconvert --execute`) | 58 celdas, 0 errores, 12 gráficos |
 | `data/housing.db` | 154 MB · esquema **v5** · 34 columnas |
 | Anuncios | 149.923 (Madrid 75.804 · Barcelona 46.728 · Valencia 27.391) |
@@ -23,7 +26,13 @@ el resto del sistema.
 | Geografía (`backend/geo/`) | 277 barrios y 807 puntos de interés · 386 kB versionados |
 | Anuncios con barrio asignado | 149.693 de 149.923 (**99,8 %**); los 230 restantes caen fuera del término municipal |
 | Docker | **Verificado de punta a punta.** Imágenes construidas, volumen `housing-explorer_housing-data` con la base, y los dos GeoJSON dentro de `/app/geo` |
-| Git | `main` en `github.com/DiegoPrieto23/housing-explorer`, con el commit inicial. El trabajo de barrios sigue **sin commitear** |
+| Git | `main` en `github.com/DiegoPrieto23/housing-explorer`, 3 commits, árbol limpio al empezar la sesión |
+| Paquete de datos versionado | `frontend/public/data/` · 4,1 MB · formato **v1** · 20 columnas |
+
+El visor está **publicado** y funciona sin servidor: los anuncios se compilan
+a un binario columnar y un *web worker* resuelve los mismos filtros dentro del
+navegador. La versión con Docker y FastAPI sigue siendo la de referencia; la
+publicada es la misma web con otro transporte de datos.
 
 Ahora mismo **no hay nada corriendo**: ni contenedores ni servidores de
 desarrollo. Docker Desktop sí está arrancado. `docker compose up -d` levanta
@@ -1230,40 +1239,42 @@ scripts.
 
 Por orden de prioridad:
 
-1. **Hacer el primer commit.** 91 ficheros en el índice y ni un solo commit: hoy
-   por hoy no hay red de seguridad ni forma de ver qué cambió cuándo. Es lo único
-   de esta lista que, si sale mal, cuesta trabajo ya hecho.
-2. **Meter los filtros en la URL** (`?precio_max=300000&zona=Madrid&vista=mapa`).
+1. **Meter los filtros en la URL** (`?precio_max=300000&zona=Madrid&vista=mapa`).
    Es lo que convierte la web en algo que se puede enseñar con un enlace, y de paso
    arregla el botón «atrás». Poco código: `filters.ts` ya sabe serializar a
    `URLSearchParams`; falta leerlos al arrancar y escribirlos con `history.replaceState`.
    Con los filtros que hay ahora —extras, distancias, chollos— reconstruir una
    búsqueda a mano ya es tedioso.
-3. **Tests de frontend.** Vitest para `filters.ts`, `format.ts` y `markers.ts`
+2. **Tests de frontend.** Vitest para `filters.ts`, `format.ts` y `markers.ts`
    (lógica pura, barato) y una prueba de humo de que la lista pinta lo que devuelve
    la API. Es el hueco más grande que queda: 12 componentes y 0 tests, y ya han
    aparecido por aquí dos fallos que un test habría cazado —el closure obsoleto de
    los extras y el contador que contaba otra cosa.
-4. **Agrupar los barrios en distritos.** Los polígonos del dataset son barrios
+3. **Agrupar los barrios en distritos.** Los polígonos del dataset son barrios
    (`ZONELEVELID` 8), así que buscar «Chamberí» o «Salamanca» no encuentra nada:
    son distritos, y sus barrios se llaman Arapiles, Trafalgar, Goya, Lista…
    Agruparlos daría un nivel intermedio útil —135 barrios son muchos para elegir
    de uno en uno— pero hace falta una tabla de correspondencias que el dataset no
    trae.
-5. **Decidir el campo de foto en `Listing`** antes de escribir el conector real: es la
+4. **Decidir el campo de foto en `Listing`** antes de escribir el conector real: es la
    única decisión de la Fase 4 que arrastra cambios en varias capas.
-6. **Plegar el panel lateral en móvil.** Con los filtros nuevos ocupa bastante más
+5. **Plegar el panel lateral en móvil.** Con los filtros nuevos ocupa bastante más
    que cuando se midió.
-7. **Valoración a la carta.** Un `POST /api/valoracion` que estime una vivienda que
+6. **Valoración a la carta.** Un `POST /api/valoracion` que estime una vivienda que
    no está en la base, a partir de las características que mande el cliente. El
    cargador ya lo soporta; falta el endpoint y su modelo de petición.
-8. **Cachear la agregación del mapa.** La vista de toda España sin filtros tarda ~1,1 s:
+7. **Cachear la agregación del mapa.** La vista de toda España sin filtros tarda ~1,1 s:
    el `GROUP BY` sobre 150k filas necesita un árbol temporal. Una tabla de celdas
    precalculadas por nivel de zoom lo dejaría en milisegundos.
-9. **Acelerar `/stats` con área dibujada.** Los percentiles se calculan con una
+8. **Acelerar `/stats` con área dibujada.** Los percentiles se calculan con una
    consulta por rango, y cada una vuelve a evaluar el polígono fila a fila: 4,2 s la
    primera vez sobre un área del tamaño de Madrid. Se cachea después, pero la
    primera espera se nota.
+9. **Comprobar el mapa del motor estático, no solo sus agregados.**
+   `verify:static` cubre `stats`, los totales de lista y mapa y el ida y vuelta de
+   los identificadores; los modos del mapa, la extensión robusta de las celdas y
+   el polígono dibujado se verificaron a mano, que no es lo mismo que quedar
+   verificados.
 10. Fase 4 completa, cuando lleguen las credenciales de Idealista.
 
 ---
@@ -1272,6 +1283,7 @@ Por orden de prioridad:
 
 | Fecha | Qué se hizo |
 | --- | --- |
+| 2026-08-25 | El visor se publica en GitHub Pages, que sirve ficheros y nada más: no hay FastAPI al otro lado y aun así filtra, agrega y saca percentiles sobre los 149.923 anuncios. Se puede porque el dataset es una foto de 2018 que no cambia, así que `scripts/build_static_data.py` lo compila a un binario columnar —4,1 MB comprimidos, frente a los ~44 MB que serían en JSON— y un *web worker* resuelve las consultas sobre `TypedArray`. El motor (`src/api/static/query.ts`) es un puerto del repositorio de Python, y para que no se desviara en silencio la compilación calcula **en SQL** los agregados de nueve consultas de referencia y `npm run verify:static` comprueba que el motor devuelve los mismos; el workflow lo ejecuta antes de desplegar. Eso cazó lo único que no cuadraba: con la desviación guardada a décimas de punto, 41 de los 6.227 chollos cruzaban el corte del −25 %, así que la columna desaparece y la desviación se deriva de un precio estimado al céntimo. Las dos compilaciones —contra la API o sin servidor— cumplen el mismo `DataClient`, así que ni `App.tsx` ni los componentes saben cuál tienen enchufado. |
 | 2026-08-25 | Fuera la tarjeta de resumen de la esquina del mapa: repetía los cuatro números que el panel izquierdo ya daba, y con ella se va su segunda petición a `/stats`. Y el README se parte en dos: uno principal, corto y con capturas, para quien llega al repo; y `README_TECHNICAL.md` con la arquitectura, la instalación manual, los endpoints, la configuración y las decisiones con sus medidas. De 852 líneas a 234 + 884. |
 | 2026-08-24 | La búsqueda pasa a entender de barrios. Cada anuncio sabe ya en cuál cae —resuelto por geometría, porque el dataset de anuncios no trae `LOCATIONID`: 149.693 de 149.923 localizados en 27 s, y los 230 restantes caen fuera del término municipal, que es una respuesta y no un fallo—. Con eso, un clic en el polígono busca dentro del barrio; el «dónde buscar» pasa de un desplegable de tres opciones a un árbol con buscador que ignora acentos y permite elegir varios; y la tabla de la izquierda se corta por barrio en cuanto hay una ciudad elegida, lo que obligó a cambiar la estrategia de cálculo porque el `GROUP BY` costaba una consulta de mediana por grupo y los grupos pasaron de 3 a 135. |
 | 2026-08-24 | Se incorporan los dos bloques del dataset que no se usaban: los 277 polígonos de barrio y los puntos de interés (centro, 801 bocas de metro y las tres calles principales). La exportación en R los saca a GeoJSON sin dependencias nuevas, corrigiendo por el camino una estación con el signo de la longitud cambiado —a 67 km, en el mar— y unos nombres doblemente codificados que había escrito yo mismo y que la validación no vio. El backend los sirve como ficheros y no como tabla, con los bytes ya serializados (5 ms por petición) y compresión en nivel 4, no en el 9 por defecto, que costaba 64 ms de CPU por petición a cambio de 5 kB. En el mapa son dos capas conmutables, y al arrancar hay pantalla de carga con los cuatro pasos de la primera vista. |

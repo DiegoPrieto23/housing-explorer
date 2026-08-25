@@ -1,0 +1,605 @@
+[
+  {
+    "name": "todo",
+    "filters": {},
+    "expected": {
+      "count": 149923,
+      "avg_price": 354098.67065093416,
+      "min_price": 20000.0,
+      "max_price": 8133000.0,
+      "avg_price_per_m2": 3404.2825607873533,
+      "p25_price": 157000.0,
+      "median_price": 255000.0,
+      "p75_price": 418000.0,
+      "p99_price": 1818000.0,
+      "by_rooms": [
+        {
+          "bucket": 0,
+          "count": 3189,
+          "avg_price": 225578,
+          "avg_price_per_m2": 4023
+        },
+        {
+          "bucket": 1,
+          "count": 15568,
+          "avg_price": 233771,
+          "avg_price_per_m2": 4229
+        },
+        {
+          "bucket": 2,
+          "count": 40169,
+          "avg_price": 272431,
+          "avg_price_per_m2": 3516
+        },
+        {
+          "bucket": 3,
+          "count": 59500,
+          "avg_price": 307819,
+          "avg_price_per_m2": 2991
+        },
+        {
+          "bucket": 4,
+          "count": 23895,
+          "avg_price": 503785,
+          "avg_price_per_m2": 3425
+        },
+        {
+          "bucket": 5,
+          "count": 5624,
+          "avg_price": 889123,
+          "avg_price_per_m2": 4019
+        },
+        {
+          "bucket": 6,
+          "count": 1978,
+          "avg_price": 1229485,
+          "avg_price_per_m2": 4100
+        }
+      ],
+      "ascensor": {
+        "count": 108785,
+        "with_it": 3641,
+        "without_it": 2778
+      }
+    }
+  },
+  {
+    "name": "una ciudad",
+    "filters": {
+      "zone": "Madrid"
+    },
+    "expected": {
+      "count": 75804,
+      "avg_price": 388442.16664028284,
+      "min_price": 21000.0,
+      "max_price": 8133000.0,
+      "avg_price_per_m2": 3630.158770318574,
+      "p25_price": 157000.0,
+      "median_price": 256000.0,
+      "p75_price": 456000.0,
+      "p99_price": 2183000.0,
+      "by_rooms": [
+        {
+          "bucket": 0,
+          "count": 2149,
+          "avg_price": 219811,
+          "avg_price_per_m2": 4349
+        },
+        {
+          "bucket": 1,
+          "count": 10692,
+          "avg_price": 238491,
+          "avg_price_per_m2": 4388
+        },
+        {
+          "bucket": 2,
+          "count": 23066,
+          "avg_price": 281783,
+          "avg_price_per_m2": 3582
+        },
+        {
+          "bucket": 3,
+          "count": 27228,
+          "avg_price": 343868,
+          "avg_price_per_m2": 3091
+        },
+        {
+          "bucket": 4,
+          "count": 9063,
+          "avg_price": 688400,
+          "avg_price_per_m2": 3969
+        },
+        {
+          "bucket": 5,
+          "count": 2574,
+          "avg_price": 1089068,
+          "avg_price_per_m2": 4455
+        },
+        {
+          "bucket": 6,
+          "count": 1032,
+          "avg_price": 1471389,
+          "avg_price_per_m2": 4539
+        }
+      ],
+      "ascensor": {
+        "count": 52259,
+        "with_it": 4025,
+        "without_it": 2754
+      }
+    }
+  },
+  {
+    "name": "precio y superficie",
+    "filters": {
+      "priceMin": 200000,
+      "priceMax": 400000,
+      "sizeMin": 80
+    },
+    "expected": {
+      "count": 29194,
+      "avg_price": 301327.6015619648,
+      "min_price": 200000.0,
+      "max_price": 400000.0,
+      "avg_price_per_m2": 2982.0848176447544,
+      "p25_price": 250000.0,
+      "median_price": 301000.0,
+      "p75_price": 353000.0,
+      "p99_price": 398000.0,
+      "by_rooms": [
+        {
+          "bucket": 0,
+          "count": 280,
+          "avg_price": 293525,
+          "avg_price_per_m2": 2796
+        },
+        {
+          "bucket": 1,
+          "count": 724,
+          "avg_price": 301432,
+          "avg_price_per_m2": 3206
+        },
+        {
+          "bucket": 2,
+          "count": 5551,
+          "avg_price": 303502,
+          "avg_price_per_m2": 3279
+        },
+        {
+          "bucket": 3,
+          "count": 14737,
+          "avg_price": 297281,
+          "avg_price_per_m2": 2988
+        },
+        {
+          "bucket": 4,
+          "count": 6949,
+          "avg_price": 307239,
+          "avg_price_per_m2": 2828
+        },
+        {
+          "bucket": 5,
+          "count": 781,
+          "avg_price": 310772,
+          "avg_price_per_m2": 2238
+        },
+        {
+          "bucket": 6,
+          "count": 172,
+          "avg_price": 308395,
+          "avg_price_per_m2": 1852
+        }
+      ],
+      "ascensor": {
+        "count": 25304,
+        "with_it": 2991,
+        "without_it": 2927
+      }
+    }
+  },
+  {
+    "name": "extras, todos a la vez",
+    "filters": {
+      "amenities": [
+        "ascensor",
+        "garaje",
+        "piscina"
+      ]
+    },
+    "expected": {
+      "count": 9932,
+      "avg_price": 498429.6214256947,
+      "min_price": 80000.0,
+      "max_price": 4646000.0,
+      "avg_price_per_m2": 3686.001868267348,
+      "p25_price": 258000.0,
+      "median_price": 393000.0,
+      "p75_price": 604000.0,
+      "p99_price": 1949000.0,
+      "by_rooms": [
+        {
+          "bucket": 0,
+          "count": 107,
+          "avg_price": 219523,
+          "avg_price_per_m2": 3472
+        },
+        {
+          "bucket": 1,
+          "count": 1001,
+          "avg_price": 251554,
+          "avg_price_per_m2": 4028
+        },
+        {
+          "bucket": 2,
+          "count": 2657,
+          "avg_price": 354354,
+          "avg_price_per_m2": 3644
+        },
+        {
+          "bucket": 3,
+          "count": 3784,
+          "avg_price": 444676,
+          "avg_price_per_m2": 3418
+        },
+        {
+          "bucket": 4,
+          "count": 1754,
+          "avg_price": 720420,
+          "avg_price_per_m2": 3893
+        },
+        {
+          "bucket": 5,
+          "count": 496,
+          "avg_price": 1181329,
+          "avg_price_per_m2": 4377
+        },
+        {
+          "bucket": 6,
+          "count": 133,
+          "avg_price": 1514150,
+          "avg_price_per_m2": 4437
+        }
+      ],
+      "ascensor": null
+    }
+  },
+  {
+    "name": "solo chollos",
+    "filters": {
+      "deviationMax": -25
+    },
+    "expected": {
+      "count": 6227,
+      "avg_price": 199909.90846314438,
+      "min_price": 20000.0,
+      "max_price": 2911000.0,
+      "avg_price_per_m2": 1890.4845538670033,
+      "p25_price": 83000.0,
+      "median_price": 131000.0,
+      "p75_price": 227000.0,
+      "p99_price": 1100000.0,
+      "by_rooms": [
+        {
+          "bucket": 0,
+          "count": 208,
+          "avg_price": 141673,
+          "avg_price_per_m2": 2139
+        },
+        {
+          "bucket": 1,
+          "count": 693,
+          "avg_price": 140874,
+          "avg_price_per_m2": 2369
+        },
+        {
+          "bucket": 2,
+          "count": 1833,
+          "avg_price": 148035,
+          "avg_price_per_m2": 1932
+        },
+        {
+          "bucket": 3,
+          "count": 2401,
+          "avg_price": 172339,
+          "avg_price_per_m2": 1618
+        },
+        {
+          "bucket": 4,
+          "count": 801,
+          "avg_price": 314869,
+          "avg_price_per_m2": 1961
+        },
+        {
+          "bucket": 5,
+          "count": 186,
+          "avg_price": 558409,
+          "avg_price_per_m2": 2355
+        },
+        {
+          "bucket": 6,
+          "count": 105,
+          "avg_price": 728924,
+          "avg_price_per_m2": 2405
+        }
+      ],
+      "ascensor": {
+        "count": 3960,
+        "with_it": 2074,
+        "without_it": 1570
+      }
+    }
+  },
+  {
+    "name": "planta y año, que tienen nulos",
+    "filters": {
+      "floorMin": 3,
+      "yearMin": 1980
+    },
+    "expected": {
+      "count": 17483,
+      "avg_price": 385866.15569410287,
+      "min_price": 26000.0,
+      "max_price": 8133000.0,
+      "avg_price_per_m2": 3383.827726572276,
+      "p25_price": 190000.0,
+      "median_price": 299000.0,
+      "p75_price": 459000.0,
+      "p99_price": 1732000.0,
+      "by_rooms": [
+        {
+          "bucket": 0,
+          "count": 311,
+          "avg_price": 252273,
+          "avg_price_per_m2": 4453
+        },
+        {
+          "bucket": 1,
+          "count": 1861,
+          "avg_price": 256603,
+          "avg_price_per_m2": 4192
+        },
+        {
+          "bucket": 2,
+          "count": 4376,
+          "avg_price": 326974,
+          "avg_price_per_m2": 3649
+        },
+        {
+          "bucket": 3,
+          "count": 7047,
+          "avg_price": 347411,
+          "avg_price_per_m2": 2967
+        },
+        {
+          "bucket": 4,
+          "count": 3250,
+          "avg_price": 506960,
+          "avg_price_per_m2": 3239
+        },
+        {
+          "bucket": 5,
+          "count": 530,
+          "avg_price": 953708,
+          "avg_price_per_m2": 3920
+        },
+        {
+          "bucket": 6,
+          "count": 108,
+          "avg_price": 1462750,
+          "avg_price_per_m2": 4518
+        }
+      ],
+      "ascensor": {
+        "count": 16296,
+        "with_it": 3426,
+        "without_it": 2802
+      }
+    }
+  },
+  {
+    "name": "cerca del metro, en buen estado",
+    "filters": {
+      "metroMaxKm": 0.5,
+      "condition": "buen_estado"
+    },
+    "expected": {
+      "count": 89111,
+      "avg_price": 375374.8919886434,
+      "min_price": 21000.0,
+      "max_price": 7138000.0,
+      "avg_price_per_m2": 3761.8128798529397,
+      "p25_price": 178000.0,
+      "median_price": 283000.0,
+      "p75_price": 439000.0,
+      "p99_price": 1817000.0,
+      "by_rooms": [
+        {
+          "bucket": 0,
+          "count": 2241,
+          "avg_price": 223054,
+          "avg_price_per_m2": 4419
+        },
+        {
+          "bucket": 1,
+          "count": 10996,
+          "avg_price": 246485,
+          "avg_price_per_m2": 4511
+        },
+        {
+          "bucket": 2,
+          "count": 25780,
+          "avg_price": 299863,
+          "avg_price_per_m2": 3862
+        },
+        {
+          "bucket": 3,
+          "count": 33204,
+          "avg_price": 348150,
+          "avg_price_per_m2": 3360
+        },
+        {
+          "bucket": 4,
+          "count": 12988,
+          "avg_price": 545863,
+          "avg_price_per_m2": 3734
+        },
+        {
+          "bucket": 5,
+          "count": 2924,
+          "avg_price": 908224,
+          "avg_price_per_m2": 4113
+        },
+        {
+          "bucket": 6,
+          "count": 978,
+          "avg_price": 1231134,
+          "avg_price_per_m2": 4154
+        }
+      ],
+      "ascensor": {
+        "count": 64339,
+        "with_it": 3987,
+        "without_it": 3178
+      }
+    }
+  },
+  {
+    "name": "área visible del mapa",
+    "filters": {
+      "bbox": {
+        "lat_min": 40.4,
+        "lat_max": 40.45,
+        "lon_min": -3.72,
+        "lon_max": -3.68
+      }
+    },
+    "expected": {
+      "count": 19945,
+      "avg_price": 603912.3088493356,
+      "min_price": 33000.0,
+      "max_price": 8133000.0,
+      "avg_price_per_m2": 5114.858292521451,
+      "p25_price": 253000.0,
+      "median_price": 413000.0,
+      "p75_price": 714000.0,
+      "p99_price": 2911000.0,
+      "by_rooms": [
+        {
+          "bucket": 0,
+          "count": 1019,
+          "avg_price": 247750,
+          "avg_price_per_m2": 5361
+        },
+        {
+          "bucket": 1,
+          "count": 4485,
+          "avg_price": 271262,
+          "avg_price_per_m2": 5198
+        },
+        {
+          "bucket": 2,
+          "count": 5643,
+          "avg_price": 425214,
+          "avg_price_per_m2": 5109
+        },
+        {
+          "bucket": 3,
+          "count": 4353,
+          "avg_price": 686297,
+          "avg_price_per_m2": 5043
+        },
+        {
+          "bucket": 4,
+          "count": 2689,
+          "avg_price": 1013179,
+          "avg_price_per_m2": 5103
+        },
+        {
+          "bucket": 5,
+          "count": 1113,
+          "avg_price": 1270098,
+          "avg_price_per_m2": 4965
+        },
+        {
+          "bucket": 6,
+          "count": 643,
+          "avg_price": 1634484,
+          "avg_price_per_m2": 4992
+        }
+      ],
+      "ascensor": {
+        "count": 14526,
+        "with_it": 5314,
+        "without_it": 4582
+      }
+    }
+  },
+  {
+    "name": "un barrio",
+    "filters": {
+      "neighbourhoods": [
+        "0-EU-ES-28-07-001-079-01-002"
+      ]
+    },
+    "expected": {
+      "count": 2944,
+      "avg_price": 293160.32608695654,
+      "min_price": 45000.0,
+      "max_price": 2780000.0,
+      "avg_price_per_m2": 4375.181421208725,
+      "p25_price": 167000.0,
+      "median_price": 236000.0,
+      "p75_price": 363000.0,
+      "p99_price": 1068000.0,
+      "by_rooms": [
+        {
+          "bucket": 0,
+          "count": 279,
+          "avg_price": 189262,
+          "avg_price_per_m2": 4779
+        },
+        {
+          "bucket": 1,
+          "count": 1045,
+          "avg_price": 202833,
+          "avg_price_per_m2": 4591
+        },
+        {
+          "bucket": 2,
+          "count": 884,
+          "avg_price": 287788,
+          "avg_price_per_m2": 4316
+        },
+        {
+          "bucket": 3,
+          "count": 485,
+          "avg_price": 412511,
+          "avg_price_per_m2": 4133
+        },
+        {
+          "bucket": 4,
+          "count": 180,
+          "avg_price": 481139,
+          "avg_price_per_m2": 3753
+        },
+        {
+          "bucket": 5,
+          "count": 41,
+          "avg_price": 717439,
+          "avg_price_per_m2": 3600
+        },
+        {
+          "bucket": 6,
+          "count": 30,
+          "avg_price": 926867,
+          "avg_price_per_m2": 3553
+        }
+      ],
+      "ascensor": {
+        "count": 1362,
+        "with_it": 4528,
+        "without_it": 4244
+      }
+    }
+  }
+]

@@ -8,8 +8,9 @@ import {
   fetchNeighbourhoods,
   fetchPointsOfInterest,
   fetchStats,
-} from "./api/client";
-import type { Order } from "./api/client";
+  IS_STATIC,
+} from "./api";
+import type { Order } from "./api";
 import DetailCard from "./components/DetailCard";
 import FilterPanel from "./components/FilterPanel";
 import ListView from "./components/ListView";
@@ -242,7 +243,11 @@ export default function App() {
       state: resource.error !== null ? "error" : resource.data !== null ? "done" : "pending",
     });
     return [
-      step("Anuncios", mapData),
+      // En la versión publicada no hay servidor detrás: los 149.923 anuncios se
+      // descargan enteros una vez y se consultan en el navegador. Son 4 MB, y
+      // un paso que tarda diez veces más que los otros sin decir por qué se lee
+      // como que algo va mal.
+      step(IS_STATIC ? "Anuncios (4 MB, solo la primera vez)" : "Anuncios", mapData),
       step("Opciones de búsqueda", facets),
       step("Barrios", neighbourhoods),
       step("Puntos de interés", pointsOfInterest),

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { fetchListing } from "../api/client";
+import { fetchListing } from "../api";
 import { deviation, euros, priceWithPeriod, rooms, squareMetres, unitPrice } from "../format";
 import { useResource } from "../hooks/useResource";
 import { markerColor, markerLabel } from "../markers";

@@ -9,6 +9,12 @@ tienes 149.923 anuncios reales y georreferenciados y los tratas como un
 conjunto de datos: no «busca un piso», sino **dónde está caro, dónde está
 barato y qué se sale de la norma**.
 
+### 👉 **[Ver el visor en vivo](https://diegoprieto23.github.io/housing-explorer/)**
+
+Los 149.923 anuncios, en el navegador y sin instalar nada. Es la misma web que
+levanta `docker compose`, compilada para funcionar sin servidor: ver
+[cómo](#publicado-sin-servidor).
+
 ![El visor, sobre Madrid](img/web/visor_principal.png)
 
 ---
@@ -73,6 +79,9 @@ El detalle está en la [documentación técnica](README_TECHNICAL.md).
 
 ## Cómo se levanta
 
+Para ver el visor no hace falta: está [publicado](#publicado-sin-servidor). Esto
+levanta el proyecto entero —API incluida— en local.
+
 Un solo comando. No hace falta tener Python, ni Node, ni R.
 
 ```bash
@@ -92,6 +101,38 @@ Ctrl+C o `docker compose down`.
 
 Para arrancarlo a mano, sin Docker, está el
 [README técnico](README_TECHNICAL.md#a-mano).
+
+---
+
+## Publicado sin servidor
+
+El visor está en GitHub Pages, que sirve ficheros y poco más: no hay FastAPI, no
+hay SQLite, no hay proceso al que preguntar. Y sin embargo filtra, agrega y
+calcula percentiles sobre los 149.923 anuncios igual que la versión con backend.
+
+Lo que lo hace posible es que **el conjunto de datos no cambia**: es una foto de
+2018. Un servidor no puede responder nada que el navegador no pueda responderse
+solo, así que los anuncios se compilan a un fichero binario columnar de 4 MB
+—`scripts/build_static_data.py`— y un *web worker* resuelve dentro del navegador
+las mismas consultas que resolvía SQL. Se descarga una vez, y a partir de ahí
+cada filtro es instantáneo porque no sale de la máquina.
+
+El motor del navegador es un **puerto** del repositorio de Python, no una
+segunda versión de él, y eso hay que demostrarlo: `scripts/build_static_data.py`
+calcula en SQL los agregados de nueve consultas de referencia y
+`npm run verify:static` comprueba que el motor de TypeScript devuelve los
+mismos, hasta la mediana y el recuento de chollos. El despliegue no sale si no
+cuadran.
+
+| | Con Docker | En GitHub Pages |
+| --- | --- | --- |
+| Dónde se filtra | SQL, sobre índices de SQLite | Un worker, sobre `TypedArray` |
+| Primera carga | Inmediata | 4 MB, una vez |
+| Cada filtro | Una petición HTTP | Nada de red |
+| Requisitos | Docker | Un navegador moderno |
+
+Lo que la versión publicada **no** trae es el backend en sí: la documentación
+interactiva de la API, la ingesta y el `/health` siguen necesitando levantarlo.
 
 ---
 

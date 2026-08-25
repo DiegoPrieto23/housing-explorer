@@ -1,3 +1,12 @@
+/**
+ * El cliente HTTP: la implementación de `DataClient` que habla con FastAPI.
+ *
+ * Es la que se usa en desarrollo y con `docker compose`, donde hay un backend
+ * de verdad al otro lado. La otra —`api/static`, que resuelve las mismas
+ * preguntas dentro del navegador— es la que hace posible publicar el visor en
+ * GitHub Pages. `api/index.ts` elige entre las dos.
+ */
+
 import { toSearchParams, type Filters } from "../filters";
 import type {
   Facets,
@@ -9,20 +18,10 @@ import type {
   SourceStatus,
   Stats,
 } from "../types/listing";
+import { ApiError, type DataClient, type Order, type PageRequest } from "./types";
 
 /** Empty by default: the Vite dev server proxies /api to FastAPI. */
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-
-/** Thrown for any non-2xx, carrying the message FastAPI put in the body. */
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
 
 async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${BASE_URL}/api${path}`, { signal });
@@ -65,15 +64,7 @@ function withFilters(path: string, filters: Filters, extra: Record<string, numbe
   return query ? `${path}?${query}` : path;
 }
 
-export interface PageRequest {
-  limit: number;
-  offset: number;
-}
-
-/** How a page of listings is sorted. Mirrors the API's `orden`. */
-export type Order = "reciente" | "precio" | "precio_desc" | "desviacion";
-
-export function fetchListings(
+function fetchListings(
   filters: Filters,
   page: PageRequest,
   order: Order = "reciente",
@@ -83,7 +74,7 @@ export function fetchListings(
   return request<ListingPage>(`${path}${path.includes("?") ? "&" : "?"}orden=${order}`, signal);
 }
 
-export function fetchStats(
+function fetchStats(
   filters: Filters,
   bins: number,
   signal?: AbortSignal,
@@ -98,7 +89,7 @@ export function fetchStats(
  * markers and aggregated cells based on how many listings match, so the map
  * never has to admit it is hiding some of them.
  */
-export function fetchMapData(
+function fetchMapData(
   filters: Filters,
   zoom: number,
   heat = false,
@@ -115,7 +106,7 @@ export function fetchMapData(
  * API is "these ids". Asking for them one by one would be one request per
  * favourite; `ids` is repeatable so it is one request for all of them.
  */
-export function fetchListingsByIds(
+function fetchListingsByIds(
   globalIds: string[],
   page: PageRequest,
   signal?: AbortSignal,
@@ -127,15 +118,15 @@ export function fetchListingsByIds(
   return request<ListingPage>(`/listings?${params.toString()}`, signal);
 }
 
-export function fetchFacets(signal?: AbortSignal): Promise<Facets> {
+function fetchFacets(signal?: AbortSignal): Promise<Facets> {
   return request<Facets>("/listings/facets", signal);
 }
 
-export function fetchListing(id: string, signal?: AbortSignal): Promise<Listing> {
+function fetchListing(id: string, signal?: AbortSignal): Promise<Listing> {
   return request<Listing>(`/listings/${encodeURIComponent(id)}`, signal);
 }
 
-export function fetchSources(signal?: AbortSignal): Promise<SourceStatus[]> {
+function fetchSources(signal?: AbortSignal): Promise<SourceStatus[]> {
   return request<SourceStatus[]>("/sources", signal);
 }
 
@@ -147,11 +138,26 @@ export function fetchSources(signal?: AbortSignal): Promise<SourceStatus[]> {
  * pasan a 67) y con `Cache-Control`, de modo que una recarga no vuelve a
  * traerlos.
  */
-export function fetchNeighbourhoods(signal?: AbortSignal): Promise<NeighbourhoodCollection> {
+function fetchNeighbourhoods(signal?: AbortSignal): Promise<NeighbourhoodCollection> {
   return request<NeighbourhoodCollection>("/neighbourhoods", signal);
 }
 
 /** El centro de cada ciudad, sus bocas de metro y su calle principal. */
-export function fetchPointsOfInterest(signal?: AbortSignal): Promise<PoiCollection> {
+function fetchPointsOfInterest(signal?: AbortSignal): Promise<PoiCollection> {
   return request<PoiCollection>("/points-of-interest", signal);
+}
+
+/** Las mismas funciones, reunidas en el objeto que `api/index.ts` reparte. */
+export function createHttpClient(): DataClient {
+  return {
+    fetchListings,
+    fetchListingsByIds,
+    fetchStats,
+    fetchMapData,
+    fetchFacets,
+    fetchListing,
+    fetchSources,
+    fetchNeighbourhoods,
+    fetchPointsOfInterest,
+  };
 }
