@@ -2,6 +2,23 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 /**
+ * `process`, declarado aquí y no traído de `@types/node`.
+ *
+ * Este fichero corre en Node, pero es el único del proyecto que lo hace: todo
+ * `src/` es código de navegador. Instalar `@types/node` metería los globales de
+ * Node en el mismo programa de TypeScript que el frontend, y entonces un
+ * `setTimeout` que devuelve un `Timeout` en vez de un número dejaría de ser un
+ * error de tipos donde debería serlo.
+ *
+ * Un `declare const` dentro de un módulo es local al módulo, así que esto no
+ * sale de este fichero. Y hace falta declararlo: sin `@types/node` no existe, y
+ * que compilara antes era casualidad — había un `@types/node` en un directorio
+ * padre de esta máquina, fuera del repositorio, que TypeScript encontraba al
+ * subir buscando `@types`. En CI no estaba y el despliegue no salió.
+ */
+declare const process: { env: Record<string, string | undefined> };
+
+/**
  * Dos compilaciones del mismo código.
  *
  * `vite build` deja la web que habla con FastAPI: es la que sirve `docker
