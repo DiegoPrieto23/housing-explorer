@@ -1,6 +1,6 @@
 # Housing Explorer
 
-### 👉 **[Ver el visor en vivo](https://diegoprieto23.github.io/housing-explorer/)**
+### 👉 **[Ver el visualizador de viviendas en vivo](https://diegoprieto23.github.io/housing-explorer/)**
 
 Un visualizador de vivienda tipo Idealista, hecho de cero: ingesta de anuncios
 reales, análisis de precios y un visor propio con mapa, filtros y detector de
