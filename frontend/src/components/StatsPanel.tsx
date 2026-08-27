@@ -1,4 +1,11 @@
-import { count, euros, pricePerM2, shortEuros } from "../format";
+import {
+  count,
+  euros,
+  pricePerM2,
+  pricePerM2Bare,
+  shortEuros,
+  shortEurosBare,
+} from "../format";
 import type { PriceBucket, Stats } from "../types/listing";
 import AmenityImpact from "./AmenityImpact";
 import DistanceCurve from "./DistanceCurve";
@@ -157,8 +164,16 @@ export default function StatsPanel({
               <thead>
                 <tr>
                   <th scope="col">{byNeighbourhood ? "Barrio" : "Zona"}</th>
-                  <th scope="col">Anuncios</th>
-                  <th scope="col">Media</th>
+                  {/*
+                    La unidad va en la cabecera y no en cada fila. Y «Anuncios»
+                    se abrevia porque en una columna de 70 px la palabra entera
+                    se sale por la izquierda y se come el nombre del barrio; el
+                    título de la sección de arriba ya dice de qué se cuentan.
+                  */}
+                  <th scope="col" title="Anuncios">
+                    N.º
+                  </th>
+                  <th scope="col">Media €</th>
                   <th scope="col">€/m²</th>
                 </tr>
               </thead>
@@ -182,12 +197,8 @@ export default function StatsPanel({
                     >
                       <th scope="row">{zone.zone}</th>
                       <td>{count(zone.count)}</td>
-                      <td>{shortEuros(zone.avg_price)}</td>
-                      <td>
-                        {zone.avg_price_per_m2 === null
-                          ? "—"
-                          : pricePerM2(zone.avg_price_per_m2)}
-                      </td>
+                      <td>{shortEurosBare(zone.avg_price)}</td>
+                      <td>{pricePerM2Bare(zone.avg_price_per_m2)}</td>
                     </tr>
                   );
                 })}

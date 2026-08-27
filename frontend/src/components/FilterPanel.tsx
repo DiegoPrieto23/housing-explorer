@@ -28,6 +28,20 @@ interface FilterPanelProps {
 const ROOM_OPTIONS = [1, 2, 3, 4, 5];
 const BATH_OPTIONS = [1, 2, 3];
 
+/**
+ * Las dos operaciones que existen, escritas aquí y no sacadas de las facetas.
+ *
+ * Antes los botones se generaban desde `facets.operations`, así que un tipo de
+ * operación sin ni un anuncio detrás simplemente no aparecía: el panel enseñaba
+ * «Todas | Venta» y no había forma de saber si el alquiler estaba filtrado, no
+ * existía, o se había perdido por el camino. Una opción que falta no explica
+ * nada; una opción que está y avisa de que está vacía, sí.
+ */
+const OPERATIONS: { value: Operation; label: string }[] = [
+  { value: "venta", label: "Venta" },
+  { value: "alquiler", label: "Alquiler" },
+];
+
 /** Distancias en km que ofrece el desplegable, con su etiqueta. */
 const DISTANCES: { value: number; label: string }[] = [
   { value: 0.5, label: "500 m" },
@@ -93,6 +107,25 @@ export default function FilterPanel({
   // activo escondido detrás de un triángulo.
   const [showMore, setShowMore] = useState(advanced > 0);
 
+  /*
+   * Cuántos anuncios hay de cada operación en todo el conjunto de datos.
+   *
+   * Sale de las facetas, que se piden una vez y no dependen de la selección:
+   * es «cuánto hay», no «cuánto queda tras los filtros». Esa diferencia es la
+   * que hace que el aviso pueda decir «no hay» en vez de «no queda».
+   */
+  const operationCounts = new Map(
+    (facets?.operations ?? []).map((option) => [option.value, option.count]),
+  );
+
+  /** La operación elegida existe como opción pero no tiene ni un anuncio. */
+  const emptyOperation =
+    facets !== null &&
+    filters.operation !== null &&
+    (operationCounts.get(filters.operation) ?? 0) === 0
+      ? filters.operation
+      : null;
+
   return (
     <form className="filters" onSubmit={(event) => event.preventDefault()}>
       <header className="filters__header">
@@ -123,17 +156,58 @@ export default function FilterPanel({
           >
             Todas
           </button>
-          {(facets?.operations ?? []).map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={filters.operation === option.value ? "is-active" : ""}
-              onClick={() => update("operation", option.value as Operation)}
-            >
-              {option.value === "venta" ? "Venta" : "Alquiler"}
-            </button>
-          ))}
+          {OPERATIONS.map((option) => {
+            // Sin facetas todavía no se sabe qué hay, y marcar todo como vacío
+            // mientras cargan sería mentir durante el primer segundo.
+            const empty = facets !== null && (operationCounts.get(option.value) ?? 0) === 0;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={[
+                  filters.operation === option.value ? "is-active" : "",
+                  empty ? "is-empty" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                title={
+                  empty
+                    ? `No hay anuncios de ${option.label.toLowerCase()} en este conjunto de datos`
+                    : `${count(operationCounts.get(option.value) ?? 0)} anuncios`
+                }
+                onClick={() => update("operation", option.value)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
+
+        {emptyOperation !== null ? (
+          <div className="banner banner--warning" role="status">
+            <span className="banner__icon" aria-hidden="true">
+              !
+            </span>
+            <div>
+              <p>
+                <strong>
+                  No hay anuncios de {emptyOperation === "venta" ? "venta" : "alquiler"}.
+                </strong>{" "}
+                Este conjunto de datos no recoge esa operación, así que la búsqueda no
+                va a devolver nada por mucho que aflojes el resto de los filtros.
+              </p>
+              <p>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => update("operation", null)}
+                >
+                  Ver todas las operaciones
+                </button>
+              </p>
+            </div>
+          </div>
+        ) : null}
       </fieldset>
 
       <fieldset className="field">

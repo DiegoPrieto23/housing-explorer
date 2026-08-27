@@ -1,36 +1,162 @@
-/* Design tokens. Light by default, redefined for dark, so nothing depends on
-   a media query having matched. */
+/* ==========================================================================
+   Housing Explorer — sistema visual
+   ==========================================================================
+
+   Un instrumento de medida, no un folleto. Tres reglas lo gobiernan y todo lo
+   demás sale de ellas:
+
+   1. UNA ESCALA POR EJE. Siete tamaños de letra, ocho de espaciado, tres de
+      radio, dos de sombra. Si un valor no está en la escala, no se usa. La
+      versión anterior tenía 23 tamaños de letra y 29 de espaciado, que es otra
+      forma de decir que no tenía ninguno.
+
+   2. EL COLOR DE INTERFAZ Y EL COLOR DE DATO NO SE MEZCLAN. El acento índigo
+      significa «esto está seleccionado» y nada más. Los tonos del mapa —azul
+      piso, verde casa, naranja ático— significan qué es cada cosa. Antes el
+      azul hacía los dos papeles a la vez y ninguna de las dos señales se leía.
+
+   3. LAS CIFRAS VAN EN MONOESPACIADA. Todo número que alguien pueda querer
+      comparar con el de al lado —precios, €/m², superficies, porcentajes,
+      recuentos— va en IBM Plex Mono con cifras tabulares, para que las
+      columnas cuadren de verdad y no por casualidad.
+
+   El motivo de la retícula: las secciones se separan con filetes de 1 px y la
+   etiqueta se apoya en el filete, como la acotación de un plano. No hay cajas
+   dentro de la barra lateral. La caja se reserva para lo que de verdad flota
+   por encima del mapa.
+   ========================================================================== */
+
+/* -- fichas ---------------------------------------------------------------- */
+
 :root {
-  --bg: #ffffff;
+  /* Tipos. IBM Plex es la familia de IBM Carbon, dibujada para analítica
+     densa: la mono comparte métricas verticales con la sans, así que una cifra
+     y su etiqueta se alinean sin corregir nada a mano. */
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", "Consolas", monospace;
+
+  /* Escala tipográfica. Siete pasos, ninguno más. */
+  --t-micro: 0.6875rem; /* 11px — ejes, unidades, notas al pie */
+  --t-xs: 0.75rem;      /* 12px — texto secundario, leyendas */
+  --t-sm: 0.8125rem;    /* 13px — controles, filas de tabla */
+  --t-base: 0.875rem;   /* 14px — texto corriente */
+  --t-md: 1rem;         /* 16px — precio de tarjeta, encabezados de sección */
+  --t-lg: 1.25rem;      /* 20px — valores de métrica */
+  --t-xl: 1.625rem;     /* 26px — precio del detalle */
+
+  /* Espaciado sobre rejilla de 4 px. */
+  --s-0: 0.125rem; /* 2  */
+  --s-1: 0.25rem;  /* 4  */
+  --s-2: 0.5rem;   /* 8  */
+  --s-3: 0.75rem;  /* 12 */
+  --s-4: 1rem;     /* 16 */
+  --s-5: 1.5rem;   /* 24 */
+  --s-6: 2rem;     /* 32 */
+  --s-7: 3rem;     /* 48 */
+
+  /* Radios. La regla, para que no haya que decidirlo dos veces: todo
+     rectángulo lleva --r-md; lo que es una cápsula lleva --r-pill; lo que es
+     un círculo lleva 50 %; las marcas decorativas de pocos píxeles llevan
+     --r-sm. No hay más casos. */
+  --r-sm: 3px;
+  --r-md: 6px;
+  --r-pill: 999px;
+
+  /* Capas. Declaradas aquí para que «¿por encima de qué va esto?» se responda
+     leyendo, y no probando números hasta que funciona. Leaflet ocupa de 400 a
+     1000 por su cuenta. */
+  --z-map-control: 1000;
+  --z-detail: 1200;
+  --z-splash: 5000;
+
+  /* Color. Claro por defecto y redefinido entero en oscuro, para que nada
+     dependa de que una media query haya coincidido. */
+  --bg: #fbfbfc;
   --surface: #ffffff;
-  --surface-alt: #f6f7f9;
-  --fg: #16181d;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --accent: #1a56db;
+  --surface-alt: #f4f5f7;
+  --surface-sunken: #eef0f3;
+  --fg: #17181c;
+  --fg-soft: #3f434b;
+  --muted: #6a6e78;
+  --border: #e4e6ea;
+  --border-strong: #ccd0d7;
+
+  /* Índigo tinta. Deliberadamente fuera de la paleta del mapa: ningún tipo de
+     inmueble usa este tono, así que «seleccionado» no puede confundirse con
+     «es un piso». */
+  --accent: #3d3fd4;
   --accent-fg: #ffffff;
-  --accent-soft: #e8effc;
+  --accent-soft: #edeefc;
+  --accent-line: #b9baf3;
+
   --error: #b42318;
   --ok: #12855b;
-  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 10%);
-  --radius: 10px;
 
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* La marca de un gráfico, que es el acento rebajado.
+     A plena saturación, veinticuatro barras de histograma seguidas pesan tanto
+     como el botón seleccionado que tienen al lado, y entonces «esto son datos»
+     y «esto lo has elegido tú» compiten por la misma atención. Rebajado, el
+     gráfico se lee como una superficie y el acento sigue significando algo. */
+  --chart: #9a9cec;
+
+  /* El chollo tiene color propio: el acento ya significa «seleccionado», y dos
+     cosas distintas con la misma señal no se distinguen. */
+  --deal: #e11d48;
+  --deal-soft: #fdeaef;
+  --deal-fg: #ffffff;
+
+  /* El grupo de anuncios. Ni acento ni tipo de inmueble: un grupo no es una
+     selección ni es una vivienda concreta, es un recuento. */
+  --cluster: #2f3340;
+  --cluster-fg: #ffffff;
+
+  /* Dos sombras y se acabó: --shadow-1 para lo que descansa sobre la página,
+     --shadow-2 para lo que flota sobre el mapa. */
+  --shadow-1: 0 1px 2px rgb(23 24 28 / 6%);
+  --shadow-2: 0 2px 4px rgb(23 24 28 / 6%), 0 8px 24px rgb(23 24 28 / 12%);
+
+  font-family: var(--font-sans);
+  font-size: var(--t-base);
+  line-height: 1.45;
   color-scheme: light dark;
+  -webkit-font-smoothing: antialiased;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14161a;
-    --surface: #1b1e24;
-    --surface-alt: #22262e;
-    --fg: #e8eaed;
-    --muted: #9aa1ac;
-    --border: #2a2e35;
-    --accent: #6f9bff;
-    --accent-fg: #10131a;
-    --accent-soft: #23304d;
-    --shadow: none;
+    --bg: #0f1013;
+    --surface: #16181c;
+    --surface-alt: #1d2026;
+    --surface-sunken: #101216;
+    --fg: #e7e9ed;
+    --fg-soft: #c2c6cd;
+    --muted: #91959f;
+    --border: #272a31;
+    --border-strong: #3b3f48;
+
+    --accent: #8f91f7;
+    --accent-fg: #14151f;
+    --accent-soft: #24254d;
+    --accent-line: #4a4c9b;
+
+    --error: #f97066;
+    --ok: #47c99a;
+
+    --chart: #6b6dc4;
+
+    --deal: #fb7185;
+    --deal-soft: #3a1520;
+    --deal-fg: #180a0f;
+
+    --cluster: #cbd0dc;
+    --cluster-fg: #14151a;
+
+    /* En oscuro esto valía `none`, y entonces la ficha de detalle, los
+       controles y la leyenda perdían toda señal de que flotan: quedaban
+       apoyados en un borde de 1 px contra una superficie casi idéntica. Una
+       sombra oscura sobre fondo oscuro sigue siendo una sombra. */
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-2: 0 2px 6px rgb(0 0 0 / 45%), 0 12px 32px rgb(0 0 0 / 55%);
   }
 }
 
@@ -45,34 +171,71 @@ body,
   margin: 0;
   background: var(--bg);
   color: var(--fg);
+  font-family: var(--font-sans);
 }
 
 h1,
 h2,
 h3 {
   margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+}
+
+/* El foco se ve siempre y es el mismo en toda la aplicación. */
+:where(button, a, input, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
 }
 
 .muted {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--t-xs);
 }
 
-/* -- layout -------------------------------------------------------------- */
+/* Toda cifra que alguien pueda querer comparar con la de al lado. */
+.metrics dd,
+.zones td,
+.zones tbody th,
+.card__price,
+.card__unit,
+.card__estimate,
+.detail__price,
+.detail__facts dd,
+.detail__id,
+.picker__count,
+.picker__badge,
+.field__badge,
+.tab__count,
+.histogram__axis,
+.curve__axis,
+.impact__value,
+.bars__label,
+.pager,
+.legend__band,
+.estimate__head strong {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "zero" 1; /* cero barrado: 0 y O dejan de parecerse */
+}
+
+/* -- retícula -------------------------------------------------------------- */
 
 .layout {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 336px 1fr;
   height: 100%;
 }
 
 .sidebar {
   border-right: 1px solid var(--border);
   overflow-y: auto;
-  padding: 1.1rem 1.1rem 2rem;
+  padding: var(--s-4) var(--s-4) var(--s-6);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0;
+  background: var(--bg);
 }
 
 .content {
@@ -85,41 +248,16 @@ h3 {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.6rem 1rem;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
   border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .toolbar__draw {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--s-2);
   margin-left: auto;
-}
-
-.button--on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-fg);
-}
-
-.button--on:hover:not(:disabled) {
-  color: var(--accent-fg);
-}
-
-.drawn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin: 0.2rem 0 0;
-  padding: 0.35rem 0.5rem;
-  border-radius: var(--radius);
-  background: var(--accent-soft);
-  font-size: 0.8rem;
-}
-
-.field > .muted {
-  margin: 0.2rem 0 0;
 }
 
 .toolbar__selected {
@@ -141,19 +279,25 @@ h3 {
   }
 }
 
-/* -- controls ------------------------------------------------------------ */
+/* -- controles ------------------------------------------------------------- */
 
 .button {
   font: inherit;
-  font-size: 0.85rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  padding: var(--s-1) var(--s-3);
+  min-height: 1.875rem;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--fg);
   cursor: pointer;
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  transition: border-color 100ms ease-out, color 100ms ease-out,
+    background 100ms ease-out;
 }
 
 .button:hover:not(:disabled) {
@@ -161,39 +305,72 @@ h3 {
   color: var(--accent);
 }
 
+/* El botón cede al pulsarlo: es la única confirmación táctil que hay. */
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
 .button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: default;
+}
+
+.button--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.button--on:hover:not(:disabled) {
+  color: var(--accent-fg);
+  border-color: var(--accent);
 }
 
 .button--ghost {
   background: transparent;
-  padding: 0.3rem 0.55rem;
-  font-size: 0.8rem;
+  border-color: var(--border);
+  padding: var(--s-1) var(--s-2);
+  font-size: var(--t-xs);
 }
 
 .segmented {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: var(--s-1);
 }
 
 .segmented button {
   font: inherit;
-  font-size: 0.82rem;
-  padding: 0.35rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  padding: var(--s-1) var(--s-2);
+  min-height: 1.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
   background: var(--surface);
-  color: var(--fg);
+  color: var(--fg-soft);
   cursor: pointer;
   flex: 1 1 auto;
+  transition: border-color 100ms ease-out, color 100ms ease-out,
+    background 100ms ease-out;
+}
+
+.segmented button:hover:not(.is-active) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .segmented button.is-active {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-fg);
+}
+
+/* Una opción que existe pero no tiene ni un anuncio detrás. Sigue pulsándose
+   —al pulsarla se explica por qué está vacía— pero no finge tener datos. */
+.segmented button.is-empty:not(.is-active) {
+  color: var(--muted);
+  border-style: dashed;
 }
 
 .segmented--views {
@@ -204,100 +381,195 @@ h3 {
   min-width: 5.5rem;
 }
 
-/* -- filter panel -------------------------------------------------------- */
+/* -- avisos ---------------------------------------------------------------- */
+
+/*
+   El aviso va pegado al control que lo provoca, no en una esquina de la
+   pantalla: quien acaba de pulsar «Alquiler» está mirando aquí, y es aquí
+   donde hay que contarle que el conjunto de datos no trae alquileres.
+*/
+.banner {
+  display: flex;
+  gap: var(--s-2);
+  margin: var(--s-2) 0 0;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--muted);
+  background: var(--surface-alt);
+  font-size: var(--t-xs);
+  line-height: 1.45;
+  color: var(--fg-soft);
+}
+
+.banner--warning {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+
+.banner__icon {
+  flex: 0 0 auto;
+  font-size: var(--t-sm);
+  line-height: 1.3;
+}
+
+.banner strong {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.banner p {
+  margin: 0;
+}
+
+.banner p + p {
+  margin-top: var(--s-1);
+}
+
+/* -- panel de filtros ------------------------------------------------------ */
 
 .filters {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0;
 }
 
 .filters__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--s-2);
+  padding-bottom: var(--s-4);
 }
 
 .filters__header h1 {
-  font-size: 1.05rem;
-  letter-spacing: -0.01em;
+  font-size: var(--t-md);
+  letter-spacing: -0.014em;
 }
 
 .filters__header p {
-  margin: 0.15rem 0 0;
+  margin: var(--s-0) 0 0;
 }
 
+/*
+   Cada filtro es una sección acotada por un filete, con su nombre apoyado
+   encima. Antes cada uno era una CAJA con la etiqueta en versalitas: ocho
+   micro-rótulos en mayúsculas bajando por el mismo raíl, que es el ritmo
+   plantillero que delata a una interfaz generada. El filete separa igual de
+   bien y no grita.
+*/
 .field {
   border: none;
+  border-top: 1px solid var(--border);
   margin: 0;
-  padding: 0;
+  padding: var(--s-4) 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--s-2);
 }
 
 .field legend {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--fg);
   padding: 0;
-  margin-bottom: 0.35rem;
+  margin-bottom: var(--s-1);
+  letter-spacing: -0.004em;
 }
 
 .field legend .muted {
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: 0.72rem;
+  font-weight: 400;
+  font-size: var(--t-xs);
+}
+
+.field > .muted {
+  margin: var(--s-1) 0 0;
 }
 
 .field select,
-.field input[type="number"] {
+.field input[type="number"],
+.field input[type="search"],
+.field input[type="text"] {
   font: inherit;
-  font-size: 0.88rem;
+  font-size: var(--t-sm);
   width: 100%;
-  padding: 0.4rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  min-height: 1.875rem;
+  padding: var(--s-1) var(--s-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
   background: var(--surface);
   color: var(--fg);
+}
+
+.field input[type="number"] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.field select:hover,
+.field input:hover {
+  border-color: var(--muted);
+}
+
+/* El marcador de posición tiene que leerse, no insinuarse. */
+.field ::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 .range {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  gap: var(--s-2);
 }
 
 .range label {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--s-1);
 }
 
 .checkbox {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  line-height: 1.35;
-  padding-top: 0.25rem;
+  gap: var(--s-2);
+  font-size: var(--t-sm);
+  line-height: 1.4;
+  padding: var(--s-3) 0 0;
   border-top: 1px solid var(--border);
 }
 
 .checkbox input {
-  margin-top: 0.25rem;
+  /* Fuera de la rejilla a propósito y de forma acotada: alinea la casilla con
+     la primera línea de su texto, y eso depende del alto de línea, no del
+     espaciado. */
+  margin-top: 0.1875rem;
+  accent-color: var(--accent);
 }
 
-/* -- statistics ---------------------------------------------------------- */
+.drawn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin: var(--s-1) 0 0;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  font-size: var(--t-xs);
+}
+
+/* -- estadísticas ---------------------------------------------------------- */
 
 .stats {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--s-3);
   border-top: 1px solid var(--border);
-  padding-top: 1.1rem;
+  padding-top: var(--s-4);
+  margin-top: var(--s-4);
   transition: opacity 120ms ease-out;
 }
 
@@ -306,46 +578,46 @@ h3 {
 }
 
 .stats h2 {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--fg);
 }
 
 .stats h3 {
-  font-size: 0.8rem;
+  font-size: var(--t-xs);
   font-weight: 600;
-  margin-top: 0.5rem;
+  color: var(--muted);
+  margin-top: var(--s-2);
 }
 
 .metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  gap: var(--s-3) var(--s-2);
   margin: 0;
 }
 
 .metrics dt {
-  font-size: 0.72rem;
+  font-size: var(--t-micro);
   color: var(--muted);
 }
 
 .metrics dd {
-  margin: 0.1rem 0 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  margin: var(--s-0) 0 0;
+  font-size: var(--t-lg);
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .metrics__small {
-  font-size: 0.9rem !important;
+  font-size: var(--t-base) !important;
 }
 
 .histogram {
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  height: 76px;
+  height: 72px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -362,34 +634,60 @@ h3 {
   display: block;
   width: 100%;
   min-height: 1px;
-  background: var(--accent);
-  border-radius: 2px 2px 0 0;
+  background: var(--chart);
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
 }
 
 .histogram__axis {
   display: flex;
   justify-content: space-between;
-  margin: 0.2rem 0 0;
-  font-size: 0.7rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-micro);
 }
 
 .zones {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
+  font-size: var(--t-xs);
+  /*
+     Anchos fijos, y no los que decida el navegador según el contenido.
+     «Lavapiés-Embajadores» es casi el doble de largo que «Chamberí», así que
+     con anchos automáticos cada tabla reparte las columnas de otra manera
+     según qué barrio le haya tocado en la primera fila, y las cifras dejan de
+     alinearse justo cuando se quieren comparar. Con anchos fijos la columna de
+     €/m² está siempre en el mismo sitio y el nombre largo se corta.
+  */
+  table-layout: fixed;
 }
 
 .zones th,
 .zones td {
   text-align: right;
-  padding: 0.3rem 0.2rem;
+  padding: var(--s-1) var(--s-2);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
+.zones th:first-child,
+.zones td:first-child {
+  padding-left: var(--s-1);
+  width: 36%;
+}
+
+.zones th:nth-child(2) {
+  width: 18%;
+}
+
+.zones th:nth-child(3),
+.zones th:nth-child(4) {
+  width: 23%;
+}
+
+/* La única vez en toda la aplicación que se usan versalitas: separar la
+   cabecera de una tabla de sus datos es trabajo estructural, no decoración. */
 .zones thead th {
-  font-size: 0.68rem;
+  font-family: var(--font-sans);
+  font-size: var(--t-micro);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--muted);
@@ -398,7 +696,10 @@ h3 {
 
 .zones tbody th {
   text-align: left;
+  font-family: var(--font-sans);
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .zones tbody tr {
@@ -411,15 +712,32 @@ h3 {
 
 .zones tbody tr.is-active {
   background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
-/* -- list view ----------------------------------------------------------- */
+.zones__scroll {
+  max-height: 13rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+/* La cabecera se queda visible al desplazarse: con 135 filas, saber cuál
+   columna es «€/m²» no debería exigir volver arriba. */
+.zones__scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-sunken);
+}
+
+/* -- vista de lista -------------------------------------------------------- */
 
 .list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem;
+  padding: var(--s-4);
   transition: opacity 120ms ease-out;
 }
 
@@ -429,28 +747,39 @@ h3 {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(224px, 1fr));
+  gap: var(--s-3);
 }
 
+/*
+   Sin sombra. La tarjeta no flota sobre nada: está apoyada en la página, junto
+   a otras veintitrés iguales. El borde ya la delimita, y veinticuatro sombras
+   en una rejilla sólo añaden ruido gris.
+*/
 .card {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   background: var(--surface);
-  box-shadow: var(--shadow);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: border-color 100ms ease-out;
+}
+
+.card:hover {
+  border-color: var(--border-strong);
 }
 
 .card--active {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .card__media {
   position: relative;
-  aspect-ratio: 4 / 3;
+  /* La misma proporción que el SVG de `placeholder.ts`: con otra, `cover`
+     recortaría el glifo por arriba y por abajo. */
+  aspect-ratio: 50 / 21;
   background: var(--surface-alt);
 }
 
@@ -463,41 +792,43 @@ h3 {
 
 .card__badge {
   position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: rgb(0 0 0 / 62%);
-  color: #fff;
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
+  top: var(--s-2);
+  left: var(--s-2);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: var(--surface);
+  color: var(--fg-soft);
+  border: 1px solid var(--border);
+  padding: 1px var(--s-2);
+  border-radius: var(--r-pill);
 }
 
 .card__body {
-  padding: 0.7rem 0.8rem 0.8rem;
+  padding: var(--s-3);
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0;
   flex: 1;
 }
 
 .card__price {
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
+  font-size: var(--t-md);
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .card__unit {
-  margin: 0;
-  font-size: 0.75rem;
+  margin: var(--s-0) 0 0;
+  font-size: var(--t-micro);
 }
 
 .card__title {
-  font-size: 0.85rem;
+  font-size: var(--t-sm);
   font-weight: 500;
-  margin: 0.3rem 0 0;
+  line-height: 1.35;
+  margin: var(--s-2) 0 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -507,9 +838,9 @@ h3 {
 .card__facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.35rem 0 0;
-  font-size: 0.8rem;
+  gap: var(--s-2);
+  margin: var(--s-2) 0 0;
+  font-size: var(--t-xs);
   color: var(--muted);
 }
 
@@ -518,24 +849,24 @@ h3 {
 }
 
 .card__zone {
-  margin: 0.2rem 0 0;
-  font-size: 0.78rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-xs);
 }
 
 .card__actions {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--s-1);
   margin-top: auto;
-  padding-top: 0.6rem;
+  padding-top: var(--s-3);
 }
 
 .pager {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 1.25rem 0 0.5rem;
-  font-variant-numeric: tabular-nums;
+  gap: var(--s-4);
+  padding: var(--s-5) 0 var(--s-2);
+  font-size: var(--t-sm);
 }
 
 @media (max-width: 520px) {
@@ -545,83 +876,62 @@ h3 {
 }
 
 .notice {
-  margin: 1.5rem;
+  margin: var(--s-5);
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--t-base);
+  max-width: 44ch;
 }
 
 .notice--error {
   color: var(--error);
 }
 
-/* -- bargains ------------------------------------------------------------- */
-
-/*
-   El chollo se marca con un color propio y una estrella, no reutilizando el
-   acento: el acento ya significa "seleccionado", y dos cosas distintas con la
-   misma señal no se distinguen.
-*/
-:root {
-  --deal: #e11d48;
-  --deal-soft: #fee7ec;
-  --deal-fg: #ffffff;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --deal: #fb7185;
-    --deal-soft: #3d1520;
-    --deal-fg: #1a0a0f;
-  }
-}
+/* -- chollos --------------------------------------------------------------- */
 
 .card--bargain {
   border-color: var(--deal);
-  box-shadow: 0 0 0 1px var(--deal);
 }
 
 .card__deal {
   position: absolute;
-  right: 0.5rem;
-  bottom: 0.5rem;
-  max-width: calc(100% - 1rem);
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
+  right: var(--s-2);
+  bottom: var(--s-2);
+  max-width: calc(100% - var(--s-4));
+  padding: 1px var(--s-2);
+  border-radius: var(--r-pill);
   background: var(--deal);
   color: var(--deal-fg);
-  font-size: 0.7rem;
-  font-weight: 650;
-  letter-spacing: 0.01em;
+  font-size: var(--t-micro);
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .card__estimate {
-  margin: 0.15rem 0 0;
-  font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-micro);
 }
 
-/* La estrella del pin ya va dentro del SVG; esto solo lo hace notar al pasar. */
+/* La estrella del pin ya va dentro del SVG; esto sólo lo hace notar al pasar. */
 .pin--bargain svg {
   filter: drop-shadow(0 1px 2px rgb(225 29 72 / 45%));
 }
 
 .checkbox--deal.is-on {
   background: var(--deal-soft);
-  border-radius: var(--radius);
-  padding: 0.4rem 0.5rem;
+  border-radius: var(--r-md);
+  padding: var(--s-2);
   border-top-color: var(--deal);
 }
 
 /* El bloque de estimación del panel de detalle. */
 .estimate {
-  margin: 0.6rem 0 0.2rem;
-  padding: 0.55rem 0.65rem;
-  border-radius: var(--radius);
+  margin: var(--s-3) 0 var(--s-1);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
   background: var(--surface-alt);
-  border-left: 3px solid var(--border);
+  border-left: 3px solid var(--border-strong);
 }
 
 .estimate--bargain {
@@ -633,9 +943,9 @@ h3 {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--s-2);
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--t-xs);
   font-weight: 600;
 }
 
@@ -644,102 +954,106 @@ h3 {
 }
 
 .estimate__head strong {
-  font-size: 0.95rem;
-  font-variant-numeric: tabular-nums;
+  font-size: var(--t-base);
+  font-weight: 600;
 }
 
 .estimate__body {
-  margin: 0.25rem 0 0;
-  font-size: 0.78rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-xs);
 }
 
 .estimate__warning {
-  margin: 0.35rem 0 0;
-  font-size: 0.7rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-micro);
   line-height: 1.4;
   color: var(--muted);
 }
 
-/* -- advanced filters ----------------------------------------------------- */
+/* -- filtros avanzados ----------------------------------------------------- */
 
 .field__toggle {
   font: inherit;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--fg);
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--s-1);
 }
 
 .field__toggle:hover {
-  color: var(--fg);
+  color: var(--accent);
 }
 
 .field__badge {
   min-width: 1.1rem;
-  padding: 0 0.25rem;
-  border-radius: 999px;
+  padding: 0 var(--s-1);
+  border-radius: var(--r-pill);
   background: var(--accent);
   color: var(--accent-fg);
-  font-size: 0.66rem;
-  letter-spacing: 0;
+  font-size: var(--t-micro);
+  font-weight: 500;
   text-align: center;
 }
 
 .more {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--s-3);
 }
 
 .more__row {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--s-1);
 }
 
 .more__row > .muted {
-  font-size: 0.72rem;
+  font-size: var(--t-xs);
 }
 
 .more__note {
   margin: 0;
-  font-size: 0.7rem;
+  font-size: var(--t-micro);
 }
 
 .checkbox--inline {
   border-top: none;
   padding-top: 0;
-  font-size: 0.8rem;
+  font-size: var(--t-sm);
 }
 
-/* Los extras, como fichas que se marcan. Un desplegable múltiple esconde lo que
-   está elegido; aquí se ve de un vistazo qué está pedido y qué no. */
+/* Los extras, como fichas que se marcan. Un desplegable múltiple esconde lo
+   que está elegido; aquí se ve de un vistazo qué está pedido y qué no. */
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--s-1);
 }
 
 .chip {
   font: inherit;
-  font-size: 0.75rem;
-  padding: 0.22rem 0.5rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
+  font-size: var(--t-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: var(--s-0) var(--s-2);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-strong);
   background: var(--surface);
-  color: var(--fg);
+  color: var(--fg-soft);
   cursor: pointer;
+  transition: border-color 100ms ease-out, color 100ms ease-out;
 }
 
 .chip:hover {
   border-color: var(--accent);
+  color: var(--accent);
 }
 
 .chip--on {
@@ -748,25 +1062,29 @@ h3 {
   color: var(--accent-fg);
 }
 
-/* -- distance curve ------------------------------------------------------- */
+.chip--on:hover {
+  color: var(--accent-fg);
+}
+
+/* -- curva de distancia ---------------------------------------------------- */
 
 .curve {
   width: 100%;
-  height: 90px;
+  height: 88px;
   display: block;
-  margin-top: 0.2rem;
+  margin-top: var(--s-1);
   overflow: visible;
 }
 
 .curve__area {
-  fill: var(--accent);
-  opacity: 0.14;
+  fill: var(--chart);
+  opacity: 0.22;
 }
 
 .curve__line {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 2;
+  stroke-width: 1.5;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
@@ -781,48 +1099,50 @@ h3 {
 .curve__axis {
   display: flex;
   justify-content: space-between;
-  margin: 0.15rem 0 0;
-  font-size: 0.58rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-micro);
+  color: var(--muted);
 }
 
 .curve__foot,
 .curve__warning {
-  margin: 0.3rem 0 0;
-  font-size: 0.68rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-micro);
 }
 
-/* -- amenity impact ------------------------------------------------------- */
+/* -- efecto de los extras -------------------------------------------------- */
 
 .impact {
   list-style: none;
-  margin: 0.3rem 0 0;
+  margin: var(--s-1) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.18rem;
+  gap: var(--s-0);
 }
 
 .impact li {
   display: grid;
-  grid-template-columns: 4.6rem 1fr 2.4rem;
+  grid-template-columns: 4.6rem 1fr 2.6rem;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.72rem;
+  gap: var(--s-1);
+  font-size: var(--t-micro);
 }
 
 .impact__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--muted);
 }
 
 /* El carril lleva el cero en el centro, para que subir y bajar se lean como
    direcciones opuestas y no como dos longitudes cualesquiera. */
 .impact__track {
   position: relative;
-  height: 0.7rem;
+  height: 0.6rem;
   background: var(--surface-alt);
-  border-radius: 2px;
+  border-radius: var(--r-sm);
 }
 
 .impact__track::before {
@@ -832,14 +1152,14 @@ h3 {
   top: 0;
   bottom: 0;
   width: 1px;
-  background: var(--border);
+  background: var(--border-strong);
 }
 
 .impact__bar {
   position: absolute;
   top: 2px;
   bottom: 2px;
-  border-radius: 2px;
+  border-radius: var(--r-sm);
 }
 
 .impact__bar--up {
@@ -854,7 +1174,6 @@ h3 {
 
 .impact__value {
   text-align: right;
-  font-variant-numeric: tabular-nums;
   color: var(--ok);
 }
 
@@ -863,55 +1182,62 @@ h3 {
 }
 
 .impact__warning {
-  margin: 0.4rem 0 0;
-  font-size: 0.68rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-micro);
   line-height: 1.4;
 }
 
-/* -- favourites ----------------------------------------------------------- */
+/* -- favoritos ------------------------------------------------------------- */
 
 .fav {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 1.9rem;
-  height: 1.9rem;
+  top: var(--s-2);
+  right: var(--s-2);
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 50%;
-  border: none;
-  background: rgb(0 0 0 / 45%);
-  color: #fff;
-  font-size: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg-soft);
+  font-size: var(--t-base);
   line-height: 1;
   cursor: pointer;
-  transition: transform 120ms ease-out, background 120ms ease-out;
+  transition: transform 120ms ease-out, color 120ms ease-out,
+    border-color 120ms ease-out;
 }
 
 .fav:hover {
-  background: rgb(0 0 0 / 70%);
-  transform: scale(1.1);
+  color: var(--deal);
+  border-color: var(--deal);
+  transform: scale(1.08);
 }
 
 .fav--on {
   background: var(--deal);
+  border-color: var(--deal);
+  color: var(--deal-fg);
+}
+
+.fav--on:hover {
+  color: var(--deal-fg);
 }
 
 .fav--detail {
-  top: 0.5rem;
-  right: 2.6rem;  /* a la izquierda del botón de cerrar */
+  top: var(--s-2);
+  right: 2.6rem; /* a la izquierda del botón de cerrar */
 }
 
 /* El contador junto a la pestaña de favoritos. */
 .tab__count {
   display: inline-block;
   min-width: 1.15rem;
-  margin-left: 0.35rem;
-  padding: 0 0.25rem;
-  border-radius: 999px;
+  margin-left: var(--s-1);
+  padding: 0 var(--s-1);
+  border-radius: var(--r-pill);
   background: var(--deal);
   color: var(--deal-fg);
-  font-size: 0.7rem;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
+  font-size: var(--t-micro);
+  font-weight: 600;
 }
 
 .segmented--views button.is-active .tab__count {
@@ -919,22 +1245,23 @@ h3 {
   color: var(--accent);
 }
 
-/* -- distribution chart --------------------------------------------------- */
+/* -- gráfico de distribución ----------------------------------------------- */
 
 .segmented--small {
-  margin: 0.1rem 0 0.5rem;
+  margin: var(--s-0) 0 var(--s-2);
 }
 
 .segmented--small button {
-  font-size: 0.72rem;
-  padding: 0.2rem 0.4rem;
+  font-size: var(--t-micro);
+  padding: var(--s-0) var(--s-1);
+  min-height: 1.375rem;
 }
 
 .bars {
   display: flex;
   align-items: flex-end;
-  gap: 3px;
-  height: 90px;
+  gap: 2px;
+  height: 88px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -954,18 +1281,21 @@ h3 {
   display: block;
   width: 100%;
   min-height: 2px;
-  background: var(--accent);
-  border-radius: 2px 2px 0 0;
+  background: var(--chart);
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
   transition: background 120ms ease-out;
 }
 
+/* Al acento, no al rosa del chollo: el rosa significa «posible chollo» en todo
+   el resto de la aplicación, y usarlo aquí para decir «estás señalando esta
+   barra» le da dos significados a la misma señal. */
 .bars li:hover .bars__bar {
-  background: var(--deal);
+  background: var(--accent);
 }
 
 .bars__label {
-  margin-top: 0.2rem;
-  font-size: 0.6rem;
+  margin-top: var(--s-1);
+  font-size: var(--t-micro);
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
@@ -974,66 +1304,11 @@ h3 {
 }
 
 .bars__foot {
-  margin: 0.35rem 0 0;
-  font-size: 0.68rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-micro);
 }
 
-/* -- map layer switch ----------------------------------------------------- */
-
-.map-layers {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  z-index: 1000;
-  gap: 0;
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-
-.map-layers button {
-  border-radius: 0;
-  font-size: 0.78rem;
-  padding: 0.32rem 0.7rem;
-}
-
-.map-layers button + button {
-  border-left: none;
-}
-
-/* -- heat legend ---------------------------------------------------------- */
-
-.legend--heat {
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.legend__title {
-  font-weight: 650;
-}
-
-.legend__ramp {
-  display: flex;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.legend__band {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.6rem;
-  height: 1.1rem;
-  font-size: 0.62rem;
-  font-weight: 600;
-  /* Los extremos llevan número; el texto tiene que leerse sobre cualquier
-     tono de la rampa, así que va oscuro con un halo claro detrás. */
-  color: #1a1a1a;
-  text-shadow: 0 0 2px rgb(255 255 255 / 85%);
-  white-space: nowrap;
-}
-
-/* -- map view ------------------------------------------------------------ */
+/* -- mapa: contenedor ------------------------------------------------------ */
 
 .map-pane {
   position: relative;
@@ -1046,34 +1321,226 @@ h3 {
   width: 100%;
 }
 
-/* Above Leaflet's own panes and controls, which sit at z-index 400-1000. */
+/* Leaflet impone su propia pila («Helvetica Neue», Arial…) a todo lo que hay
+   dentro del contenedor, y ahí dentro están los marcadores, las etiquetas y la
+   atribución. Sin esto, la mitad de la aplicación iría en Plex y la otra mitad
+   en Helvetica. */
+.leaflet-container {
+  font-family: var(--font-sans);
+  font-size: var(--t-sm);
+}
+
+/* Mientras se dibuja, el cursor tiene que decirlo: arrastrar mueve el mapa,
+   dibujar no. */
+.map--drawing,
+.map--drawing .leaflet-grab {
+  cursor: crosshair;
+}
+
+/* Los controles propios de Leaflet, con la misma piel que los nuestros: sin
+   esto, el zoom son dos cuadrados blancos de esquinas duras al lado de unos
+   botones redondeados, y se ve que vienen de sitios distintos. */
+.leaflet-touch .leaflet-bar,
+.leaflet-bar {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  background: var(--surface);
+  color: var(--fg-soft);
+  border-bottom-color: var(--border);
+  font-family: var(--font-sans);
+}
+
+.leaflet-bar a:hover {
+  color: var(--accent);
+  background: var(--surface-alt);
+}
+
+.leaflet-control-layers {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--t-sm);
+}
+
+.leaflet-control-layers-expanded {
+  padding: var(--s-2) var(--s-3);
+}
+
+.leaflet-control-layers label {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  margin: 0;
+}
+
+.leaflet-control-layers input {
+  accent-color: var(--accent);
+}
+
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--t-micro);
+}
+
+.leaflet-control-attribution a {
+  color: var(--muted);
+}
+
+/* -- mapa: controles propios ----------------------------------------------- */
+
+/*
+   Los cuatro conmutadores en una sola columna, y empezando POR DEBAJO del
+   control de zoom de Leaflet.
+
+   Antes «Marcadores / Calor» se colocaba en top: 0.75rem — exactamente encima
+   de los botones + y − de Leaflet, que también viven en la esquina superior
+   izquierda. Con z-index 1000 los tapaba del todo: el zoom estaba ahí, pero no
+   se podía ni ver ni pulsar. 5.5rem es la altura del control de zoom más el
+   aire que Leaflet le deja.
+*/
+.map-controls {
+  position: absolute;
+  top: 5.5rem;
+  left: var(--s-3);
+  z-index: var(--z-map-control);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  align-items: flex-start;
+}
+
+/* Marcadores | Calor: dos maneras de pintar lo mismo, así que van pegadas en
+   un solo bloque. Barrios y Puntos de interés son cosas distintas que se
+   encienden por separado, así que van sueltas. */
+.map-layers {
+  gap: 0;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
+  flex-wrap: nowrap;
+}
+
+.map-layers button {
+  border-radius: 0;
+  font-size: var(--t-xs);
+  padding: var(--s-1) var(--s-3);
+  min-height: 1.75rem;
+  background: var(--surface);
+}
+
+.map-layers button + button {
+  border-left: none;
+}
+
+.map-overlays {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  align-items: flex-start;
+}
+
+.map-overlays button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  min-height: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--muted);
+  box-shadow: var(--shadow-1);
+  font: inherit;
+  font-size: var(--t-xs);
+  cursor: pointer;
+  transition: color 100ms ease-out, border-color 100ms ease-out;
+}
+
+.map-overlays button:hover {
+  color: var(--fg);
+}
+
+.map-overlays button.is-active {
+  color: var(--fg);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 500;
+}
+
+/* Apagada, la muestra de color se ve en gris: el botón dice lo mismo con el
+   texto y con la muestra, y no hace falta leerlo para saber si está puesta. */
+.map-overlays__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: 0 0 auto;
+  border-radius: var(--r-sm);
+  background: var(--muted);
+  opacity: 0.4;
+}
+
+.map-overlays button.is-active .map-overlays__swatch {
+  opacity: 1;
+}
+
+.map-overlays button.is-active .map-overlays__swatch--zone {
+  background: transparent;
+  border: 1.5px solid #1a56db;
+}
+
+.map-overlays button.is-active .map-overlays__swatch--poi {
+  background: #d1332e;
+  border-radius: 50%;
+}
+
+/* -- mapa: estado ---------------------------------------------------------- */
+
 .map-status {
   position: absolute;
   left: 50%;
-  bottom: 0.75rem;
+  bottom: var(--s-3);
   transform: translateX(-50%);
-  z-index: 1000;
-  max-width: calc(100% - 2rem);
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
+  z-index: var(--z-map-control);
+  max-width: calc(100% - 26rem);
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-pill);
   border: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: var(--shadow);
-  font-size: 0.8rem;
+  box-shadow: var(--shadow-2);
+  font-size: var(--t-xs);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.map-status strong {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .map-status .notice {
   margin: 0;
 }
 
-/* -- markers -------------------------------------------------------------- */
+/* -- mapa: marcadores ------------------------------------------------------ */
 
-/* divIcon wrappers are opaque white boxes by default; the SVG carries the look. */
+/* Los envoltorios de divIcon vienen con caja blanca opaca; el SVG lleva la
+   apariencia. */
 .pin,
-.cell {
+.cell,
+.cluster,
+.poi {
   background: none;
   border: none;
 }
@@ -1091,62 +1558,130 @@ h3 {
 
 .pin--selected svg {
   transform: scale(1.3);
-  filter: drop-shadow(0 0 0 2px var(--accent)) drop-shadow(0 2px 4px rgb(0 0 0 / 45%));
+  filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 2px 4px rgb(0 0 0 / 45%));
 }
 
-/* An aggregated grid cell: one dot standing in for many listings. */
-.cell__inner {
+.poi svg {
+  display: block;
+}
+
+/*
+   La burbuja de recuento: una para las celdas que agrega el servidor y otra
+   para los grupos que junta el plugin en el navegador. Son la misma pregunta
+   —«¿cuántos anuncios hay aquí?»— así que se pintan igual, y por eso comparten
+   estilo en vez de tener uno cada una.
+
+   Sustituye a los globos verde / amarillo / rojo que trae MarkerCluster.Default:
+   tres colores semafóricos que no significan «bueno, regular, malo» sino sólo
+   «pocos, algunos, muchos», que es exactamente lo que ya dice el tamaño. Aquí
+   el tamaño lleva la cuenta y el tono sólo la refuerza, en una sola familia.
+*/
+.cell__inner,
+.cluster__inner {
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgb(26 86 219 / 78%);
-  border: 2px solid rgb(255 255 255 / 85%);
-  box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-  transition: transform 120ms ease-out;
+  /* Ficha sobre el mapa, no mancha: mismo relleno que los controles y las
+     leyendas, para que todo lo que la aplicación pone encima del mapa se lea
+     como una sola familia y las teselas sigan viéndose entre medias. */
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1.5px solid var(--cluster);
+  /* La única sombra fuera de las dos fichas: --shadow-2 lleva un desenfoque de
+     24 px pensado para un panel, y en un círculo de 30 px lo emborrona sobre
+     las teselas en vez de despegarlo. */
+  box-shadow: 0 1px 3px rgb(0 0 0 / 22%);
+  color: var(--cluster);
+  transition: transform 120ms ease-out, background 120ms ease-out,
+    color 120ms ease-out;
 }
 
-.cell:hover .cell__inner {
+/*
+   Tres escalones dentro de UN tono, y en el orden que sugiere el dato: cuanto
+   más lleno, más sólido. Es una rampa secuencial de verdad, que es lo que el
+   verde / amarillo / rojo del plugin fingía ser sin serlo — aquel iba de un
+   tono a otro pasando por un tercero, que es como se pinta una escala
+   divergente, no una que sólo crece.
+*/
+.cell__inner--mid,
+.cluster__inner--mid {
+  background: color-mix(in srgb, var(--cluster) 24%, var(--surface));
+}
+
+.cell__inner--high,
+.cluster__inner--high {
+  background: var(--cluster);
+  border-color: color-mix(in srgb, var(--surface) 65%, transparent);
+  color: var(--cluster-fg);
+}
+
+.cell:hover .cell__inner,
+.cluster:hover .cluster__inner {
   transform: scale(1.08);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
 }
 
-.cell__count {
-  font-size: 0.78rem;
-  font-weight: 650;
+.cell__count,
+.cluster__count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-xs);
+  font-weight: 600;
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 
-/* While drawing, the cursor must say so: dragging pans, drawing does not. */
-.map--drawing,
-.map--drawing .leaflet-grab {
-  cursor: crosshair;
+/* La animación con la que el plugin abre y cierra un grupo. */
+@media (prefers-reduced-motion: reduce) {
+  .cell__inner,
+  .cluster__inner,
+  .pin svg {
+    transition: none;
+  }
 }
 
-/* -- legend --------------------------------------------------------------- */
+/* -- mapa: leyendas -------------------------------------------------------- */
+
+/*
+   Todas las leyendas juntas en la esquina inferior IZQUIERDA, apiladas.
+
+   La de puntos de interés estaba antes en la inferior derecha, que es
+   exactamente donde se abre la ficha del anuncio seleccionado: pinchabas un
+   piso y la ficha caía encima de la leyenda. Además, «qué significa cada
+   símbolo» es una sola pregunta, y tener media respuesta en cada esquina
+   obligaba a mirar dos sitios.
+*/
+.map-legends {
+  position: absolute;
+  left: var(--s-3);
+  bottom: var(--s-3);
+  z-index: var(--z-map-control);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  align-items: flex-start;
+  max-width: min(24rem, 45%);
+}
 
 .legend {
-  position: absolute;
-  left: 0.75rem;
-  bottom: 0.75rem;
-  z-index: 1000;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem 0.7rem;
-  max-width: 60%;
-  padding: 0.4rem 0.6rem;
-  border-radius: var(--radius);
+  gap: var(--s-1) var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: var(--shadow);
-  font-size: 0.72rem;
+  box-shadow: var(--shadow-2);
+  font-size: var(--t-micro);
+  color: var(--fg-soft);
 }
 
 .legend__item {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--s-1);
   white-space: nowrap;
 }
 
@@ -1157,7 +1692,7 @@ h3 {
 .legend__swatch {
   width: 0.6rem;
   height: 0.6rem;
-  border-radius: 2px;
+  border-radius: var(--r-sm);
   flex: 0 0 auto;
 }
 
@@ -1166,218 +1701,36 @@ h3 {
   border: 2px solid var(--muted);
 }
 
-/* -- detail panel --------------------------------------------------------- */
-
-/*
-   Pinned to the bottom-right rather than opening over the marker: a popup
-   covers the very spot you clicked and vanishes as soon as the map moves.
-*/
-.detail {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 1200;
-  width: min(320px, calc(100vw - 2rem));
-  max-height: min(70vh, 560px);
-  overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: 0 6px 24px rgb(16 24 40 / 22%);
-}
-
-.detail__close {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  z-index: 1;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  border: none;
-  background: rgb(0 0 0 / 55%);
-  color: #fff;
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.detail__close:hover {
-  background: rgb(0 0 0 / 75%);
-}
-
-.detail__media {
-  position: relative;
-  aspect-ratio: 2 / 1;
-  background: var(--surface-alt);
-}
-
-.detail__media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.detail__badge {
-  position: absolute;
-  left: 0.6rem;
-  bottom: 0.6rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.detail__body {
-  padding: 0.8rem 0.9rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.detail__price {
-  margin: 0;
-  font-size: 1.35rem;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-.detail__title {
-  font-size: 0.9rem;
-  font-weight: 500;
-  margin: 0.4rem 0 0;
-}
-
-.detail__facts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.45rem;
-  margin: 0.7rem 0 0.2rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid var(--border);
-}
-
-.detail__facts dt {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-}
-
-.detail__facts dd {
-  margin: 0.1rem 0 0;
-  font-size: 0.92rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.detail__zone {
-  margin: 0.5rem 0 0.6rem;
-}
-
-.detail__id {
-  margin: 0.4rem 0 0;
-  font-family: ui-monospace, "Cascadia Code", monospace;
-  font-size: 0.72rem;
-}
-
-@media (max-width: 900px) {
-  .detail {
-    right: 0.5rem;
-    left: 0.5rem;
-    bottom: 0.5rem;
-    width: auto;
-    max-height: 55vh;
-  }
-}
-
-/* -- capas de contexto: barrios y puntos de interés ------------------------ */
-
-/* Debajo del conmutador marcadores/calor, que ocupa la esquina superior
-   izquierda. Apilado en vertical porque las etiquetas son largas y en
-   horizontal empujarían el control fuera del mapa en una ventana estrecha. */
-.map-overlays {
-  position: absolute;
-  top: 3.1rem;
-  left: 0.75rem;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  align-items: flex-start;
-}
-
-.map-overlays button {
-  display: inline-flex;
+.legend--heat {
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--muted);
-  box-shadow: var(--shadow);
-  font: inherit;
-  font-size: 0.78rem;
-  cursor: pointer;
+  gap: var(--s-2);
+  flex-wrap: nowrap;
 }
 
-.map-overlays button:hover {
-  color: var(--fg);
-}
-
-.map-overlays button.is-active {
-  color: var(--fg);
-  border-color: var(--accent);
-  background: var(--accent-soft);
+.legend__title {
   font-weight: 600;
+  color: var(--fg);
 }
 
-/* Apagada, la muestra de color se ve en gris: el botón dice lo mismo con el
-   texto y con la muestra, y no hace falta leerlo para saber si está puesta. */
-.map-overlays__swatch {
-  width: 0.85rem;
-  height: 0.85rem;
-  flex: 0 0 auto;
-  border-radius: 3px;
-  background: var(--muted);
-  opacity: 0.45;
+/* La rampa, entera y sin texto encima. */
+.legend__ramp {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 6rem;
+  border-radius: var(--r-sm);
+  overflow: hidden;
 }
 
-.map-overlays button.is-active .map-overlays__swatch {
-  opacity: 1;
+.legend__step {
+  flex: 1 1 0;
+  height: 0.7rem;
 }
 
-.map-overlays button.is-active .map-overlays__swatch--zone {
-  background: transparent;
-  border: 1.5px solid #1a56db;
-}
-
-.map-overlays button.is-active .map-overlays__swatch--poi {
-  background: #d1332e;
-  border-radius: 50%;
-}
-
-/* La diana del centro de la ciudad es un divIcon: sin la caja blanca que
-   Leaflet le pone por defecto, igual que los pines. */
-.poi {
-  background: none;
-  border: none;
-}
-
-.poi svg {
-  display: block;
-}
-
-.legend--poi {
-  left: auto;
-  right: 0.75rem;
-  bottom: 0.75rem;
-  max-width: 40%;
+/* Los extremos, uno a cada lado de la rampa. */
+.legend__band {
+  color: var(--fg-soft);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .legend__swatch--centre {
@@ -1393,22 +1746,37 @@ h3 {
 }
 
 .legend__swatch--street {
-  height: 0.25rem;
-  border-radius: 2px;
+  height: 0.2rem;
+  border-radius: var(--r-sm);
   background: #0369a1;
 }
 
-/* -- etiquetas del mapa ---------------------------------------------------- */
+/* En pantallas estrechas la columna de leyendas y el aviso de estado se
+   pisarían; el aviso sube por encima de ellas. */
+@media (max-width: 900px) {
+  .map-legends {
+    max-width: calc(100% - var(--s-6));
+  }
+
+  .map-status {
+    max-width: calc(100% - var(--s-6));
+    bottom: auto;
+    top: var(--s-3);
+  }
+}
+
+/* -- mapa: etiquetas ------------------------------------------------------- */
 
 /* Las de Leaflet vienen con fondo blanco fijo y no responden al tema. */
 .leaflet-tooltip.tip {
-  padding: 0.28rem 0.5rem;
+  padding: var(--s-1) var(--s-2);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   background: var(--surface);
   color: var(--fg);
-  box-shadow: var(--shadow);
-  font-size: 0.78rem;
+  box-shadow: var(--shadow-1);
+  font-family: var(--font-sans);
+  font-size: var(--t-xs);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1420,8 +1788,141 @@ h3 {
 .tip__city {
   display: block;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--t-micro);
   font-weight: 400;
+}
+
+/* -- ficha de detalle ------------------------------------------------------ */
+
+/*
+   Anclada abajo a la derecha en vez de abrirse sobre el marcador: un popup
+   tapa justo el sitio en el que acabas de pulsar y desaparece en cuanto se
+   mueve el mapa.
+*/
+.detail {
+  position: fixed;
+  right: var(--s-4);
+  bottom: var(--s-4);
+  z-index: var(--z-detail);
+  width: min(320px, calc(100vw - var(--s-6)));
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.detail__close {
+  position: absolute;
+  top: var(--s-2);
+  right: var(--s-2);
+  z-index: 1;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg-soft);
+  font-size: var(--t-md);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.detail__close:hover {
+  background: var(--surface-alt);
+  color: var(--fg);
+}
+
+.detail__media {
+  position: relative;
+  aspect-ratio: 50 / 21;
+  background: var(--surface-alt);
+}
+
+.detail__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.detail__badge {
+  position: absolute;
+  left: var(--s-3);
+  bottom: var(--s-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 1px var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--fg-soft);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.detail__body {
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.detail__price {
+  margin: 0;
+  font-size: var(--t-xl);
+  font-weight: 600;
+  letter-spacing: -0.028em;
+}
+
+.detail__title {
+  font-size: var(--t-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  margin: var(--s-2) 0 0;
+}
+
+.detail__facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3) var(--s-2);
+  margin: var(--s-3) 0 var(--s-1);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--border);
+}
+
+.detail__facts dt {
+  font-size: var(--t-micro);
+  color: var(--muted);
+}
+
+.detail__facts dd {
+  margin: var(--s-0) 0 0;
+  font-size: var(--t-base);
+  font-weight: 500;
+}
+
+.detail__zone {
+  margin: var(--s-2) 0 var(--s-3);
+}
+
+.detail__id {
+  margin: var(--s-2) 0 0;
+  font-size: var(--t-micro);
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .detail {
+    right: var(--s-2);
+    left: var(--s-2);
+    bottom: var(--s-2);
+    width: auto;
+    max-height: 55vh;
+  }
 }
 
 /* -- pantalla de carga ----------------------------------------------------- */
@@ -1429,7 +1930,7 @@ h3 {
 .splash {
   position: fixed;
   inset: 0;
-  z-index: 5000;
+  z-index: var(--z-splash);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1445,31 +1946,32 @@ h3 {
 }
 
 .splash__panel {
-  width: min(23rem, calc(100% - 3rem));
+  width: min(23rem, calc(100% - var(--s-7)));
 }
 
 .splash__brand {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  margin-bottom: 1.4rem;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
 }
 
 .splash__brand h1 {
-  font-size: 1.15rem;
+  font-size: var(--t-md);
+  letter-spacing: -0.014em;
 }
 
 .splash__brand p {
-  margin: 0.15rem 0 0;
+  margin: var(--s-0) 0 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--t-xs);
 }
 
 .splash__spinner {
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 1.75rem;
+  height: 1.75rem;
   flex: 0 0 auto;
-  border: 3px solid var(--border);
+  border: 2px solid var(--border);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: splash-spin 0.9s linear infinite;
@@ -1482,19 +1984,19 @@ h3 {
 }
 
 .splash__steps {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--s-4);
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--s-2);
 }
 
 .splash__step {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  font-size: 0.85rem;
+  gap: var(--s-2);
+  font-size: var(--t-sm);
   color: var(--muted);
 }
 
@@ -1509,15 +2011,15 @@ h3 {
 /* Un hueco del tamaño de la marca, siempre, para que la lista no se desplace
    lateralmente conforme van llegando las cosas. */
 .splash__mark {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1rem;
+  height: 1rem;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 1.5px solid var(--border);
-  font-size: 0.65rem;
+  border: 1.5px solid var(--border-strong);
+  font-size: var(--t-micro);
   font-weight: 700;
 }
 
@@ -1534,8 +2036,8 @@ h3 {
 }
 
 .splash__bar {
-  height: 4px;
-  border-radius: 999px;
+  height: 3px;
+  border-radius: var(--r-pill);
   background: var(--border);
   overflow: hidden;
 }
@@ -1543,7 +2045,7 @@ h3 {
 .splash__fill {
   display: block;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--accent);
   transition: width 0.35s ease;
 }
@@ -1563,12 +2065,12 @@ h3 {
   }
 }
 
-/* -- selector de dónde buscar --------------------------------------------- */
+/* -- selector de dónde buscar ---------------------------------------------- */
 
 .picker {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: var(--s-2);
 }
 
 .picker__search {
@@ -1577,26 +2079,27 @@ h3 {
 
 .picker__search input {
   width: 100%;
-  padding-right: 1.8rem;
+  /* El ancho del botón de la cruz, para que el texto no pase por debajo. */
+  padding-right: 1.75rem;
 }
 
 /* La cruz nativa de type=search no aparece en todos los navegadores y no se
-   puede estilar en ninguno; esta sí, y además queda donde se la espera. */
+   puede estilar en ninguno; ésta sí, y además queda donde se la espera. */
 .picker__search input::-webkit-search-cancel-button {
   display: none;
 }
 
 .picker__clear {
   position: absolute;
-  right: 0.35rem;
+  right: var(--s-1);
   top: 50%;
   transform: translateY(-50%);
   border: none;
   background: none;
   color: var(--muted);
-  font-size: 1.05rem;
+  font-size: var(--t-md);
   line-height: 1;
-  padding: 0.1rem 0.25rem;
+  padding: 0 var(--s-1);
   cursor: pointer;
 }
 
@@ -1611,31 +2114,21 @@ h3 {
 .picker__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.15rem 0.4rem 0.15rem 0.5rem;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--fg);
-  font: inherit;
-  font-size: 0.75rem;
-  cursor: pointer;
+  gap: var(--s-1);
 }
 
 .chip__x {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: var(--t-base);
   line-height: 1;
 }
 
+.chip--on .chip__x {
+  color: var(--accent-fg);
+}
+
 .chip:hover .chip__x {
-  color: var(--error);
+  color: inherit;
 }
 
 .chip--clear {
@@ -1645,8 +2138,7 @@ h3 {
 }
 
 /* Alto fijo y desplazamiento propio: con 277 barrios, una lista que crece
-   empuja el resto de los filtros fuera de la pantalla. Ocho filas es lo que
-   deja ver que hay más sin comerse el panel. */
+   empuja el resto de los filtros fuera de la pantalla. */
 .picker__list {
   margin: 0;
   padding: 0;
@@ -1654,15 +2146,19 @@ h3 {
   max-height: 15rem;
   overflow-y: auto;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
 .picker__city {
   display: flex;
   align-items: center;
-  gap: 0.1rem;
+  gap: 0;
   border-bottom: 1px solid var(--border);
+}
+
+.picker__city:last-child {
+  border-bottom: none;
 }
 
 .picker__city.is-active {
@@ -1672,11 +2168,11 @@ h3 {
 .picker__caret {
   flex: 0 0 auto;
   width: 1.5rem;
-  padding: 0.35rem 0;
+  padding: var(--s-1) 0;
   border: none;
   background: none;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--t-micro);
   cursor: pointer;
 }
 
@@ -1685,27 +2181,27 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.35rem 0.5rem 0.35rem 0;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-2) var(--s-1) 0;
   border: none;
   background: none;
   color: var(--fg);
   font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: var(--t-sm);
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
 }
 
 .picker__row--all {
-  padding-left: 0.6rem;
-  font-weight: 500;
+  padding-left: var(--s-2);
+  font-weight: 400;
   border-bottom: 1px solid var(--border);
 }
 
 .picker__row--all.is-active {
   color: var(--accent);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .picker__row:hover {
@@ -1715,22 +2211,21 @@ h3 {
 .picker__count {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--t-micro);
   font-weight: 400;
-  font-variant-numeric: tabular-nums;
 }
 
 /* Cuántos barrios de esta ciudad van marcados, para que plegarla no esconda
    que hay un filtro puesto dentro. */
 .picker__badge {
   flex: 0 0 auto;
-  margin-right: 0.45rem;
-  padding: 0.05rem 0.35rem;
-  border-radius: 999px;
+  margin-right: var(--s-1);
+  padding: 0 var(--s-1);
+  border-radius: var(--r-pill);
   background: var(--accent);
   color: var(--accent-fg);
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: var(--t-micro);
+  font-weight: 600;
 }
 
 .picker__children {
@@ -1743,9 +2238,9 @@ h3 {
 .picker__leaf {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.22rem 0.5rem 0.22rem 1.55rem;
-  font-size: 0.8rem;
+  gap: var(--s-1);
+  padding: var(--s-0) var(--s-2) var(--s-0) var(--s-5);
+  font-size: var(--t-sm);
   cursor: pointer;
 }
 
@@ -1755,12 +2250,13 @@ h3 {
 
 .picker__leaf.is-active {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .picker__leaf input {
   flex: 0 0 auto;
   margin: 0;
+  accent-color: var(--accent);
 }
 
 .picker__leaf .picker__name {
@@ -1771,22 +2267,4 @@ h3 {
    que no va a devolver nada sin llegar a esconderlo. */
 .picker__leaf.is-empty {
   color: var(--muted);
-}
-
-/* -- tabla por zona, cuando son barrios ----------------------------------- */
-
-.zones__scroll {
-  max-height: 13rem;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-/* La cabecera se queda visible al desplazarse: con 135 filas, saber cuál
-   columna es "€/m²" no debería exigir volver arriba. */
-.zones__scroll thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--surface);
 }

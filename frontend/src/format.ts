@@ -35,6 +35,23 @@ export function shortEuros(value: number | null | undefined): string {
   return value === null || value === undefined ? "—" : `${COMPACT.format(value)} €`;
 }
 
+/**
+ * Las mismas cifras, sin la unidad, para usar dentro de una tabla.
+ *
+ * En una tabla la unidad vive en la cabecera de la columna, y repetirla en cada
+ * una de las 135 filas no añade información: añade ancho. Y el ancho es justo
+ * lo que falta en una barra lateral de 336 px, donde «293,2 mil €» junto a
+ * «4375 €/m²» deja las dos columnas pegadas y las cifras dejan de compararse,
+ * que es para lo único que están ahí.
+ */
+export function shortEurosBare(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : COMPACT.format(value);
+}
+
+export function pricePerM2Bare(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : INTEGER.format(value);
+}
+
 export function count(value: number): string {
   return INTEGER.format(value);
 }

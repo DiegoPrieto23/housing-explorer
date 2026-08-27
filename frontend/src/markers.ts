@@ -127,7 +127,14 @@ function pinSvg(style: MarkerStyle, rented: boolean, bargain: boolean): string {
     `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">`,
     `<path d="${PIN_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="${width}"/>`,
     `<g transform="translate(7.5 7.5) scale(0.625)" fill="${glyphFill}">`,
-    `<path d="${style.glyph}"/>`,
+    // `evenodd` y no el relleno por defecto: las ventanas del piso, la puerta
+    // de la casa o el hueco del estudio son subtrazos DENTRO del contorno, y
+    // están dibujados en el mismo sentido de giro que él. Con la regla nonzero
+    // que trae SVG por defecto eso no los convierte en huecos sino en relleno,
+    // y los diez glifos se veían como manchas macizas: un piso era un
+    // rectángulo y un estudio un cuadrado. Con `evenodd` los huecos son huecos
+    // y el glifo vuelve a ser un dibujo.
+    `<path fill-rule="evenodd" d="${style.glyph}"/>`,
     `</g>`,
     bargain
       ? `<circle cx="24" cy="7" r="5.5" fill="${BARGAIN_COLOR}" stroke="#fff" stroke-width="1.5"/>`
@@ -177,11 +184,56 @@ export function clusterIcon(cell: MapCluster, maxCount: number): L.DivIcon {
   const size = Math.round(28 + share * 34);
   const label = compact(cell.count);
 
+  /*
+   * El escalón de solidez va contra el máximo de esta vista, no contra un
+   * número fijo. Una celda de mil anuncios es «mucho» en un mapa cuya celda
+   * más llena tiene mil doscientos, y es «poco» en uno donde tiene setenta
+   * mil; con umbrales absolutos, mirar España entera pintaría las tres celdas
+   * del mismo color y la rampa no diría nada. Las burbujas del navegador van
+   * al revés —umbrales fijos— porque ahí no hay un máximo que conocer.
+   */
+  const tier =
+    share >= 0.66 ? " cell__inner--high" : share >= 0.33 ? " cell__inner--mid" : "";
+
   return L.divIcon({
     html:
-      `<span class="cell__inner" style="width:${size}px;height:${size}px">` +
+      `<span class="cell__inner${tier}" style="width:${size}px;height:${size}px">` +
       `<span class="cell__count">${label}</span></span>`,
     className: "cell",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+/**
+ * La burbuja de un grupo hecho por `leaflet.markercluster` en el navegador.
+ *
+ * Sustituye a la que trae el plugin, que era la razón para importar
+ * `MarkerCluster.Default.css`: tres globos translúcidos verde, amarillo y rojo
+ * según el tamaño. Un semáforo dice «bueno, regular, malo» y aquí no hay nada
+ * bueno ni malo, sólo «pocos, algunos, muchos» — que además es exactamente lo
+ * que ya está diciendo el diámetro. Dos codificaciones para el mismo dato, una
+ * de ellas prestada de un vocabulario que no viene a cuento.
+ *
+ * Lo que queda: un solo tono, el diámetro llevando la cuenta, y tres escalones
+ * de solidez que refuerzan la magnitud sin inventarse un significado nuevo.
+ * Comparte estilo con las celdas que agrega el servidor porque responden a la
+ * misma pregunta, «¿cuántos anuncios hay aquí?».
+ *
+ * El diámetro va en logaritmo y no en raíz porque, a diferencia de las celdas,
+ * un grupo del navegador no tiene un máximo conocido contra el que normalizar:
+ * puede ir de 2 a varios miles según el zoom, y el logaritmo mantiene los dos
+ * extremos dentro de un tamaño que cabe en el mapa.
+ */
+export function clusterBubbleIcon(count: number): L.DivIcon {
+  const size = Math.round(Math.min(60, Math.max(30, 26 + 15 * Math.log10(count))));
+  const tier = count >= 200 ? " cluster__inner--high" : count >= 25 ? " cluster__inner--mid" : "";
+
+  return L.divIcon({
+    html:
+      `<span class="cluster__inner${tier}" style="width:${size}px;height:${size}px">` +
+      `<span class="cluster__count">${compact(count)}</span></span>`,
+    className: "cluster",
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });

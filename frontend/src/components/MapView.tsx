@@ -192,9 +192,17 @@ function HeatLegend({ cells }: { cells: MapCluster[] }) {
   const scale = buildScale(cells);
   if (!scale) return null;
 
-  // One swatch per band, labelled with its lower bound. Labelling every break
-  // would not fit, so only the ends and the middle carry a number -- enough to
-  // read the direction and the range, which is what a legend is for.
+  /*
+   * Los números fuera de la rampa, uno a cada lado.
+   *
+   * Antes iban DENTRO de la primera y la última banda, con un halo blanco
+   * detrás para que se leyeran sobre cualquier tono. Con las cifras en
+   * monoespaciada «1,4 mil» ya no cabe en una banda de 2,6 rem y se cortaba
+   * por la izquierda. Sacarlos no es sólo que quepan: una rampa de color se
+   * lee mejor entera, sin texto encima, y los extremos etiquetados a los lados
+   * son la forma canónica de acotarla. De paso se va el «hasta X» que había
+   * suelto al final, que decía lo mismo que el extremo derecho.
+   */
   const bands = scale.colours.map((colour, index) => ({
     colour,
     from: index === 0 ? scale.min : scale.breaks[index - 1],
@@ -203,21 +211,18 @@ function HeatLegend({ cells }: { cells: MapCluster[] }) {
   return (
     <div className="legend legend--heat">
       <span className="legend__title">€/m²</span>
+      <span className="legend__band">{shortEuros(scale.min)}</span>
       <span className="legend__ramp">
-        {bands.map((band, index) => (
+        {bands.map((band) => (
           <span
             key={band.colour}
-            className="legend__band"
+            className="legend__step"
             style={{ background: band.colour }}
             title={`desde ${Math.round(band.from).toLocaleString("es-ES")} €/m²`}
-          >
-            {index === 0 || index === bands.length - 1 ? shortEuros(band.from) : ""}
-          </span>
+          />
         ))}
       </span>
-      <span className="legend__item legend__item--note">
-        hasta {shortEuros(scale.max)}
-      </span>
+      <span className="legend__band">{shortEuros(scale.max)}</span>
     </div>
   );
 }
@@ -363,52 +368,74 @@ export default function MapView({
         )}
       </MapContainer>
 
-      <div className="map-layers segmented" role="tablist" aria-label="Capa del mapa">
-        {(["marcadores", "calor"] as MapLayer[]).map((option) => (
+      {/*
+        Los cuatro conmutadores en una columna, y arrancando por debajo del
+        control de zoom de Leaflet.
+
+        Antes «Marcadores / Calor» se colocaba en la misma esquina y a la misma
+        altura que los botones + y − del mapa, y con más z-index: el zoom
+        estaba ahí pero quedaba tapado y no se podía pulsar. Ahora la columna
+        empieza donde acaba el zoom, y de paso los cuatro botones —que son la
+        misma clase de cosa, «qué se ve encima del mapa»— viven juntos en vez
+        de en dos bloques separados.
+      */}
+      <div className="map-controls">
+        <div className="map-layers segmented" role="tablist" aria-label="Capa del mapa">
+          {(["marcadores", "calor"] as MapLayer[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="tab"
+              aria-selected={layer === option}
+              className={layer === option ? "is-active" : ""}
+              onClick={() => onLayerChange(option)}
+            >
+              {option === "marcadores" ? "Marcadores" : "Calor"}
+            </button>
+          ))}
+        </div>
+
+        {/*
+          Botones que conmutan, no pestañas: los dos pueden estar encendidos a
+          la vez, y `aria-pressed` es lo que dice eso. Un `role="tab"`
+          prometería que elegir uno apaga el otro.
+        */}
+        <div className="map-overlays" role="group" aria-label="Capas de contexto">
           <button
-            key={option}
             type="button"
-            role="tab"
-            aria-selected={layer === option}
-            className={layer === option ? "is-active" : ""}
-            onClick={() => onLayerChange(option)}
+            aria-pressed={overlays.neighbourhoods}
+            className={overlays.neighbourhoods ? "is-active" : ""}
+            onClick={() => onOverlayToggle("neighbourhoods")}
+            title="Contornos de los 277 barrios que delimita el dataset"
           >
-            {option === "marcadores" ? "Marcadores" : "Calor"}
+            <span className="map-overlays__swatch map-overlays__swatch--zone" />
+            Barrios
           </button>
-        ))}
+          <button
+            type="button"
+            aria-pressed={overlays.pois}
+            className={overlays.pois ? "is-active" : ""}
+            onClick={() => onOverlayToggle("pois")}
+            title="Centro de la ciudad, bocas de metro y calle principal"
+          >
+            <span className="map-overlays__swatch map-overlays__swatch--poi" />
+            Puntos de interés
+          </button>
+        </div>
       </div>
 
       {/*
-        Botones que conmutan, no pestañas: los dos pueden estar encendidos a la
-        vez, y `aria-pressed` es lo que dice eso. Un `role="tab"` prometería que
-        elegir uno apaga el otro.
+        Las leyendas, todas en la esquina inferior izquierda y apiladas.
+
+        La de puntos de interés vivía en la inferior derecha, que es justo
+        donde se abre la ficha del anuncio: seleccionabas un piso y la ficha
+        caía encima. Y «qué significa cada símbolo» es una sola pregunta, así
+        que tener media respuesta en cada esquina obligaba a mirar a dos sitios.
       */}
-      <div className="map-overlays" role="group" aria-label="Capas de contexto">
-        <button
-          type="button"
-          aria-pressed={overlays.neighbourhoods}
-          className={overlays.neighbourhoods ? "is-active" : ""}
-          onClick={() => onOverlayToggle("neighbourhoods")}
-          title="Contornos de los 277 barrios que delimita el dataset"
-        >
-          <span className="map-overlays__swatch map-overlays__swatch--zone" />
-          Barrios
-        </button>
-        <button
-          type="button"
-          aria-pressed={overlays.pois}
-          className={overlays.pois ? "is-active" : ""}
-          onClick={() => onOverlayToggle("pois")}
-          title="Centro de la ciudad, bocas de metro y calle principal"
-        >
-          <span className="map-overlays__swatch map-overlays__swatch--poi" />
-          Puntos de interés
-        </button>
+      <div className="map-legends">
+        {overlays.pois ? <PoiLegend /> : null}
+        {heat ? <HeatLegend cells={clusters} /> : <Legend types={visibleTypes} />}
       </div>
-
-      {heat ? <HeatLegend cells={clusters} /> : <Legend types={visibleTypes} />}
-
-      {overlays.pois ? <PoiLegend /> : null}
 
       <div className="map-status">
         {error ? (

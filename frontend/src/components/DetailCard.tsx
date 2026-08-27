@@ -67,7 +67,14 @@ export default function DetailCard({
         <>
           <div className="detail__media">
             <img src={placeholderImage(data)} alt="" width={320} height={160} />
-            <span className="detail__badge" style={{ background: accent }}>
+            {/*
+              La etiqueta llevaba el color del tipo como fondo, y encima el
+              texto en el color de texto normal: azul oscuro sobre gris oscuro,
+              ilegible. Ahora es una ficha neutra con una muestra del color al
+              lado — la misma que usa la leyenda del mapa para decir lo mismo.
+            */}
+            <span className="detail__badge">
+              <span className="legend__swatch" style={{ background: accent }} />
               {markerLabel(data.property_type as PropertyType)}
             </span>
             <button

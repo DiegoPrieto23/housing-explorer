@@ -3,7 +3,7 @@ import "leaflet.markercluster";
 import { useEffect, useRef } from "react";
 import { useMap } from "react-leaflet";
 
-import { clusterIcon, markerIcon } from "../markers";
+import { clusterBubbleIcon, clusterIcon, markerIcon } from "../markers";
 import type { MapCluster, MapPoint } from "../types/listing";
 import { isBargain } from "../types/listing";
 
@@ -57,6 +57,10 @@ export default function MarkerLayer({
       disableClusteringAtZoom: 17,
       maxClusterRadius: 55,
       showCoverageOnHover: false,
+      // La burbuja del grupo la dibuja la aplicación, no el plugin. Ver
+      // `clusterBubbleIcon`: mismo aspecto que las celdas del servidor, que
+      // responden a la misma pregunta.
+      iconCreateFunction: (cluster) => clusterBubbleIcon(cluster.getChildCount()),
     });
     const cells = L.layerGroup();
 

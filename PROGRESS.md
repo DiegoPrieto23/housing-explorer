@@ -1259,7 +1259,9 @@ Por orden de prioridad:
 4. **Decidir el campo de foto en `Listing`** antes de escribir el conector real: es la
    única decisión de la Fase 4 que arrastra cambios en varias capas.
 5. **Plegar el panel lateral en móvil.** Con los filtros nuevos ocupa bastante más
-   que cuando se midió.
+   que cuando se midió. El rediseño de 2026-08-26 le quitó las cajas y algo de
+   alto, pero no resuelve esto: por debajo de 900 px el panel sigue ocupando el
+   45 % de la pantalla siempre, esté plegado o no.
 6. **Valoración a la carta.** Un `POST /api/valoracion` que estime una vivienda que
    no está en la base, a partir de las características que mande el cliente. El
    cargador ya lo soporta; falta el endpoint y su modelo de petición.
@@ -1275,7 +1277,12 @@ Por orden de prioridad:
    los identificadores; los modos del mapa, la extensión robusta de las celdas y
    el polígono dibujado se verificaron a mano, que no es lo mismo que quedar
    verificados.
-10. Fase 4 completa, cuando lleguen las credenciales de Idealista.
+10. **Tesela base oscura cuando el tema es oscuro.** La interfaz responde a
+    `prefers-color-scheme` desde el rediseño, pero el mapa no: en oscuro queda una
+    barra lateral negra junto a un mapa de OpenStreetMap blanco. CARTO sirve un
+    `dark_all` con la misma licencia que el `light_all` que ya se usa; es añadir
+    una capa base y elegirla según el tema.
+11. Fase 4 completa, cuando lleguen las credenciales de Idealista.
 
 ---
 
@@ -1283,6 +1290,7 @@ Por orden de prioridad:
 
 | Fecha | Qué se hizo |
 | --- | --- |
+| 2026-08-26 | Rediseño visual del visor. La auditoría encontró diez marcas de interfaz generada: 23 tamaños de letra y 29 de espaciado sin escala, seis sistemas de radio compitiendo, `--shadow: none` en oscuro (los paneles flotantes perdían toda señal de que flotan), ocho versalitas seguidas bajando por el panel lateral, portadas de tarjeta con un degradado de tono aleatorio por hash del id, y el acento `#1a56db` significando a la vez «seleccionado» y «es un piso». Se sustituye por un sistema con una escala por eje —7 tamaños, 8 espaciados sobre rejilla de 4 px, 3 radios con regla escrita, 2 sombras, 3 capas z— en IBM Plex Sans/Mono autoalojado, con toda cifra en monoespaciada tabular; el acento pasa a índigo tinta, fuera de la paleta del mapa, que se queda entera para significar datos. La barra lateral cambia cajas por filetes. Las portadas pasan a llevar el glifo y el tono del **tipo de inmueble**, lo que destapó que los diez glifos se pintaban macizos: sus subtrazos interiores giran en el mismo sentido que el contorno y hacía falta `fill-rule="evenodd"` —los pines del mapa llevaban el mismo fallo desde que existen—. Arreglados tres solapes: los conmutadores del mapa tapaban el control de zoom de Leaflet, la leyenda de puntos de interés caía debajo de la ficha de detalle, y la etiqueta del tipo en la ficha era azul oscuro sobre gris oscuro. «Operación» pasa a listar siempre Venta y Alquiler con aviso cuando una no tiene anuncios, en vez de esconder la que está vacía. Los grupos del mapa dejan el verde/amarillo/rojo de `MarkerCluster.Default` por una rampa secuencial de un solo tono. `verify:static` sigue dando «todo cuadra»: no se tocó ni un dato. |
 | 2026-08-25 | El visor se publica en GitHub Pages, que sirve ficheros y nada más: no hay FastAPI al otro lado y aun así filtra, agrega y saca percentiles sobre los 149.923 anuncios. Se puede porque el dataset es una foto de 2018 que no cambia, así que `scripts/build_static_data.py` lo compila a un binario columnar —4,1 MB comprimidos, frente a los ~44 MB que serían en JSON— y un *web worker* resuelve las consultas sobre `TypedArray`. El motor (`src/api/static/query.ts`) es un puerto del repositorio de Python, y para que no se desviara en silencio la compilación calcula **en SQL** los agregados de nueve consultas de referencia y `npm run verify:static` comprueba que el motor devuelve los mismos; el workflow lo ejecuta antes de desplegar. Eso cazó lo único que no cuadraba: con la desviación guardada a décimas de punto, 41 de los 6.227 chollos cruzaban el corte del −25 %, así que la columna desaparece y la desviación se deriva de un precio estimado al céntimo. Las dos compilaciones —contra la API o sin servidor— cumplen el mismo `DataClient`, así que ni `App.tsx` ni los componentes saben cuál tienen enchufado. |
 | 2026-08-25 | Fuera la tarjeta de resumen de la esquina del mapa: repetía los cuatro números que el panel izquierdo ya daba, y con ella se va su segunda petición a `/stats`. Y el README se parte en dos: uno principal, corto y con capturas, para quien llega al repo; y `README_TECHNICAL.md` con la arquitectura, la instalación manual, los endpoints, la configuración y las decisiones con sus medidas. De 852 líneas a 234 + 884. |
 | 2026-08-24 | La búsqueda pasa a entender de barrios. Cada anuncio sabe ya en cuál cae —resuelto por geometría, porque el dataset de anuncios no trae `LOCATIONID`: 149.693 de 149.923 localizados en 27 s, y los 230 restantes caen fuera del término municipal, que es una respuesta y no un fallo—. Con eso, un clic en el polígono busca dentro del barrio; el «dónde buscar» pasa de un desplegable de tres opciones a un árbol con buscador que ignora acentos y permite elegir varios; y la tabla de la izquierda se corta por barrio en cuanto hay una ciudad elegida, lo que obligó a cambiar la estrategia de cálculo porque el `GROUP BY` costaba una consulta de mediana por grupo y los grupos pasaron de 3 a 135. |
