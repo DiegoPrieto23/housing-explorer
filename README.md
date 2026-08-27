@@ -1,5 +1,7 @@
 # Housing Explorer
 
+### 👉 **[Ver el visualizador de viviendas en vivo](https://diegoprieto23.github.io/housing-explorer/)**
+
 Un visualizador de vivienda tipo Idealista, hecho de cero: ingesta de anuncios
 reales, análisis de precios y un visor propio con mapa, filtros y detector de
 chollos.
@@ -8,8 +10,6 @@ No es una copia de un portal inmobiliario. Es lo que se puede hacer cuando
 tienes 149.923 anuncios reales y georreferenciados y los tratas como un
 conjunto de datos: no «busca un piso», sino **dónde está caro, dónde está
 barato y qué se sale de la norma**.
-
-### 👉 **[Ver el visor en vivo](https://diegoprieto23.github.io/housing-explorer/)**
 
 Los 149.923 anuncios, en el navegador y sin instalar nada. Es la misma web que
 levanta `docker compose`, compilada para funcionar sin servidor: ver
